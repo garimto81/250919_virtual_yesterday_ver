@@ -126,7 +126,7 @@
   <meta http-equiv="cache-control" content="no-cache, must-revalidate, max-age=0" />
   <meta http-equiv="pragma" content="no-cache" />
   <meta http-equiv="expires" content="0" />
-  <title>포커 핸드 로거 v3.5.8</title>
+  <title>포커 핸드 로거 v3.5.9</title>
   <script src="https://cdn-tailwindcss.vercel.app/"></script>
   <script src="archive/chip-analysis-module.js?v=3.0.0" defer></script>
   <!-- 테이블 관리 모듈 v59 - IN/OUT 두 가지 상태만 사용 -->
@@ -471,7 +471,7 @@
             <h4 class="text-sm font-bold mb-2 text-amber-400">플레이어 추가</h4>
             <div class="grid grid-cols-3 gap-2 mb-2">
               <input type="text" id="new-player-name" class="bg-gray-600 px-2 py-1 rounded text-sm" placeholder="이름">
-              <input type="number" id="new-player-seat" class="bg-gray-600 px-2 py-1 rounded text-sm" placeholder="좌석" min="1" max="10">
+              <input type="number" id="new-player-seat" class="bg-gray-600 px-2 py-1 rounded text-sm" placeholder="#좌석" min="1" max="10">
               <input type="text" id="new-player-chips" class="bg-gray-600 px-2 py-1 rounded text-sm" placeholder="칩">
             </div>
             <button id="add-player-local-btn" class="w-full bg-green-600 hover:bg-green-700 py-1 rounded text-sm">+ 추가</button>
@@ -743,7 +743,7 @@
   // ========================================
   // 중앙 버전 관리 시스템
   // ========================================
-  const APP_VERSION = 'v3.5.8';
+  const APP_VERSION = 'v3.5.9';
   const VERSION_DATE = '2025-09-22';
   const VERSION_INFO = `포커 핸드 로거 ${APP_VERSION} (${VERSION_DATE})`;
 
@@ -2050,14 +2050,14 @@
           html += `<button class="seat-player-btn btn ${btnClass} ${borderClass} px-1 py-0.5 text-[9px] rounded truncate h-7" 
                     data-seat="${seatNum}" 
                     data-player-name="${playerData.name}"
-                    title="Seat ${seatNum}: ${playerData.name}">
+                    title="#${seatNum}: ${playerData.name}">
                     <div class="truncate">${displayText}</div>
                   </button>`;
         } else {
           // 빈 좌석
           html += `<button class="seat-empty-btn btn bg-gray-800 ${borderClass} px-1 py-0.5 text-[9px] rounded h-7" 
                     data-seat="${seatNum}"
-                    title="Seat ${seatNum}: 빈자리">
+                    title="#${seatNum}: 빈자리">
                     <div class="text-gray-600">${positionBadge || '•'}</div>
                   </button>`;
         }
@@ -2079,7 +2079,7 @@
             const selected = player.seat.toString() === currentBtnPos.toString() ? 'selected' : '';
             const isInGame = window.state.playersInHand.some(p => p.name === player.name);
             const statusIndicator = isInGame ? '🟢' : '⚫';
-            return `<option value="${player.seat}" ${selected} title="${player.seat}번 - ${player.name} ${isInGame ? '(참여중)' : '(대기중)'}">${statusIndicator}${player.seat}</option>`;
+            return `<option value="${player.seat}" ${selected} title="#${player.seat} - ${player.name} ${isInGame ? '(참여중)' : '(대기중)'}">${statusIndicator}#${player.seat}</option>`;
           }).join('')}
         </select>
       `;
@@ -2102,7 +2102,7 @@
           
           // 시각적 피드백
           showFeedback(window.state.buttonPosition ? 
-            `버튼 위치: ${window.state.buttonPosition}번 좌석` : 
+            `버튼 위치: #${window.state.buttonPosition}` : 
             '버튼 위치 해제', false);
         });
       }
@@ -2736,7 +2736,7 @@
         if(player.seatNo) {
           delete window.state.seatMap[player.seatNo];
         }
-        console.log(`➖ ${name} 게임에서 제외 (Seat ${player.seatNo})`);
+        console.log(`➖ ${name} 게임에서 제외 (#${player.seatNo})`);
       } else {
         // 플레이어 추가 (게임에 참여)
         const pool=window.state.playerDataByTable[window.state.selectedTable]||[];
@@ -2753,7 +2753,7 @@
         }
         
         // 새 플레이어 추가 시 initialChips를 현재 칩으로 설정
-        console.log(`➕ ${name} 게임 참여: 시작칩 = ${chips}, 좌석 = ${seat}`);
+        console.log(`➕ ${name} 게임 참여: 시작칩 = ${chips}, #${seat}`);
         window.state.playersInHand.push({
           name, 
           hand:[], 
@@ -3811,7 +3811,7 @@
               tableName: '',
               tableNo: tableNo
             });
-            console.log(`[v3.5.5] 기존 형식: ${player} 추가됨 (Table ${tableNo}, Seat ${seatNo})`);
+            console.log(`[v3.5.5] 기존 형식: ${player} 추가됨 (Table ${tableNo}, #${seatNo})`);
           }
         }
       } else {
@@ -3845,7 +3845,7 @@
               tableName,      // 새 필드
               tableNo         // 새 필드
             });
-            console.log(`[v3.5.5] ✅ ${player} 추가됨 (Table ${tableNo}, Seat ${seatNo}, ${nationality})`);
+            console.log(`[v3.5.5] ✅ ${player} 추가됨 (Table ${tableNo}, #${seatNo}, ${nationality})`);
           } else {
             console.log(`[v3.5.5] ❌ ${player} 제외됨 - 필수 정보 누락`);
           }
@@ -4407,7 +4407,7 @@
         // 각 요소 검증
         console.log(`  [0] = '${playerRow[0]}' (PLAYER 문자열)`);
         console.log(`  [1] = '${playerRow[1]}' (이름: ${p.name})`);
-        console.log(`  [2] = ${playerRow[2]} (좌석: ${p.seat})`);
+        console.log(`  [2] = ${playerRow[2]} (#${p.seat})`);
         console.log(`  [3] = ${playerRow[3]} (0 고정값)`);
         console.log(`  [4] = ${playerRow[4]} (시작칩: ${initialChips})`);
         console.log(`  [5] = ${playerRow[5]} (종료칩: ${finalChips})`);
@@ -4424,7 +4424,7 @@
         const pushedRow = out[out.length - 1];
         console.log(`  push 후 저장된 행:`, pushedRow);
         console.log(`  최종 CSV 형식:`);
-        console.log(`    A=${pushedRow[0]} (행번호), B=${pushedRow[1]} (PLAYER), C=${pushedRow[2]} (이름), D=${pushedRow[3]} (좌석),`);
+        console.log(`    A=${pushedRow[0]} (행번호), B=${pushedRow[1]} (PLAYER), C=${pushedRow[2]} (이름), D=${pushedRow[3]} (#좌석),`);
         console.log(`    E=${pushedRow[4]} (0 고정값), F=${pushedRow[5]} (시작칩), G=${pushedRow[6]} (종료칩), H=${pushedRow[7]} (핸드), I=${pushedRow[8]} (포지션)`);
         console.log(`--- ${p.name} 처리 완료 ---\n`);
       });
@@ -5060,7 +5060,7 @@ async function sendDataToGoogleSheet(){
           togglePlayerInHand(playerName);
         } else {
           // 빈 좌석 클릭 - 나중에 필요시 플레이어 추가 기능
-          console.log(`빈 좌석 ${seatNum} 클릭`);
+          console.log(`빈 #${seatNum} 클릭`);
         }
       });
 
@@ -5971,7 +5971,7 @@ async function sendDataToGoogleSheet(){
 
       // 좌석 중복 체크
       if (window.managementState.currentPlayers.some(p => parseInt(p.seat) === seatNumber)) {
-        showFeedback(`좌석 ${seatNumber}번은 이미 사용 중입니다`, true);
+        showFeedback(`#${seatNumber}은 이미 사용 중입니다`, true);
         return;
       }
 
@@ -5996,7 +5996,7 @@ async function sendDataToGoogleSheet(){
 
       renderManagementPlayersList();
       updateChangesSummary();
-      showFeedback(`${name} 좌석 ${seatNumber}번에 추가됨`);
+      showFeedback(`${name} #${seatNumber}에 추가됨`);
     }
 
     // 기존 플레이어 추가 UI 숨기기 (10개 시트에서 직접 입력하므로)
@@ -6016,7 +6016,7 @@ async function sendDataToGoogleSheet(){
 
       // 좌석 중복 체크
       if (newSeat && window.managementState.currentPlayers.some((p, i) => i !== index && p.seat === newSeat)) {
-        showFeedback(`좌석 ${newSeat}번은 이미 사용 중입니다`, true);
+        showFeedback(`#${newSeat}은 이미 사용 중입니다`, true);
         renderManagementPlayersList();
         return;
       }
@@ -6405,11 +6405,11 @@ async function sendDataToGoogleSheet(){
         <div class="flex items-center justify-between bg-gray-600 p-2 rounded player-list-item" data-player="${player.name}">
           <div class="flex-1">
             <span class="font-medium">${player.name}</span>
-            ${player.seatNo ? `<span class="text-xs text-gray-400 ml-2">좌석 ${player.seatNo}</span>` : ''}
+            ${player.seatNo ? `<span class="text-xs text-gray-400 ml-2">#${player.seatNo}</span>` : ''}
           </div>
           <div class="flex items-center gap-2">
             <input type="number" class="bg-gray-700 px-2 py-1 rounded text-sm w-16 seat-input"
-                   value="${player.seatNo || ''}" placeholder="좌석" min="1" max="10"
+                   value="${player.seatNo || ''}" placeholder="#좌석" min="1" max="10"
                    data-player="${player.name}">
             <input type="text" class="bg-gray-700 px-2 py-1 rounded text-sm w-20 chips-input"
                    value="${formatNumber(player.chips || '0')}" placeholder="칩"
@@ -6548,17 +6548,17 @@ async function sendDataToGoogleSheet(){
 
         const result = await response.json();
         if (result.success) {
-          showFeedback(`✅ ${playerName} 좌석 ${newSeat}으로 변경`);
+          showFeedback(`✅ ${playerName} #${newSeat}으로 변경`);
           // 메모리 업데이트
           const player = window.state.playerDataByTable[window.state.selectedTable]?.find(p => p.name === playerName);
           if (player) player.seatNo = newSeat;
           renderPlayerSelection();
         } else {
-          showFeedback(`❌ 좌석 변경 실패: ${result.error}`, true);
+          showFeedback(`❌ #좌석 변경 실패: ${result.error}`, true);
         }
       } catch(err) {
-        console.error('좌석 업데이트 오류:', err);
-        showFeedback('좌석 변경 중 오류 발생', true);
+        console.error('#좌석 업데이트 오류:', err);
+        showFeedback('#좌석 변경 중 오류 발생', true);
       }
     }
 
