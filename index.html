@@ -126,7 +126,7 @@
   <meta http-equiv="cache-control" content="no-cache, must-revalidate, max-age=0" />
   <meta http-equiv="pragma" content="no-cache" />
   <meta http-equiv="expires" content="0" />
-  <title>포커 핸드 로거 v3.5.2</title>
+  <title>포커 핸드 로거 v3.5.7</title>
   <script src="https://cdn-tailwindcss.vercel.app/"></script>
   <script src="archive/chip-analysis-module.js?v=3.0.0" defer></script>
   <!-- 테이블 관리 모듈 v59 - IN/OUT 두 가지 상태만 사용 -->
@@ -743,7 +743,7 @@
   // ========================================
   // 중앙 버전 관리 시스템
   // ========================================
-  const APP_VERSION = 'v3.5.2';
+  const APP_VERSION = 'v3.5.7';
   const VERSION_DATE = '2025-09-22';
   const VERSION_INFO = `포커 핸드 로거 ${APP_VERSION} (${VERSION_DATE})`;
 
@@ -1936,8 +1936,15 @@
         `;
         
         button.onclick = () => {
+          console.log(`[DEBUG] 테이블 선택: ${table}`);
           window.state.selectedTable = table;
           window.state.playersInHand = [];
+
+          // 선택한 테이블의 데이터 확인
+          const tableData = window.state.playerDataByTable[table];
+          console.log(`[DEBUG] 선택한 테이블의 플레이어 데이터:`, tableData);
+          console.log(`[DEBUG] 플레이어 수: ${tableData ? tableData.length : 0}`);
+
           updateSelectedTableDisplay();
           closeTableSelectorModal();
 
@@ -1986,13 +1993,21 @@
     function renderPlayerSelection(){
       const seatButtons = document.getElementById('seat-buttons');
       if(!seatButtons) return;
-      
+
+      // 디버깅 로그 추가
+      console.log(`[DEBUG] renderPlayerSelection 호출`);
+      console.log(`[DEBUG] 선택된 테이블: ${window.state.selectedTable}`);
+      console.log(`[DEBUG] playerDataByTable 전체:`, window.state.playerDataByTable);
+      console.log(`[DEBUG] 전체 테이블 목록:`, window.state.allTables);
+
       if(!window.state.selectedTable){
         seatButtons.innerHTML='<p class="text-gray-500 text-xs col-span-11">테이블을 먼저 선택해주세요.</p>';
         return;
       }
-      
+
       const tableData = window.state.playerDataByTable[window.state.selectedTable]||[];
+      console.log(`[DEBUG] 현재 테이블 데이터:`, tableData);
+      console.log(`[DEBUG] 플레이어 수:`, tableData.length);
       
       // 10개 좌석 버튼 + 버튼 위치 드롭다운 생성
       let html = '';
@@ -2000,7 +2015,7 @@
       // 1-10번 좌석 버튼 (좌석 번호 표시 제거)
       for(let seatNum = 1; seatNum <= 10; seatNum++){
         // Type 시트에서 해당 좌석의 플레이어 찾기
-        const playerData = tableData.find(p => parseInt(p.seat) === seatNum);
+        const playerData = tableData.find(p => parseInt(p.seatNo) === seatNum);
         const isInHand = playerData && window.state.playersInHand.some(pp => pp.name === playerData.name);
         
         // 포지션 정보 가져오기
@@ -2020,7 +2035,7 @@
         }
         
         if(playerData){
-          const notable = playerData.notable ? '⭐' : '';
+          const notable = (playerData.notable || playerData.keyplayer) ? '⭐' : '';
           const btnClass = isInHand ? 'bg-amber-600' : 'bg-gray-600 hover:bg-gray-500';
           // 포지션 배지와 플레이어 이름 표시
           let displayText = '';
@@ -2053,7 +2068,7 @@
       
       // 전체 테이블 플레이어 리스트에서 좌석이 있는 플레이어들 가져오기
       const allPlayersWithSeats = tableData.filter(player => player.seat).map(player => ({
-        seat: parseInt(player.seat),
+        seat: parseInt(player.seatNo),
         name: player.name
       })).sort((a, b) => a.seat - b.seat);
       
@@ -2729,7 +2744,7 @@
         if(!pd) return;
         
         const chips=pd.chips||'';
-        const notable=pd.notable||false;
+        const notable=pd.notable||pd.keyplayer||false;
         const seat=pd.seat||''; // Type 시트의 seat 정보
         
         // seatMap에 추가
@@ -2999,8 +3014,8 @@
       if(!window.state.selectedTable) return [];
       const tableData = window.state.playerDataByTable[window.state.selectedTable] || [];
       return tableData
-        .filter(player => player.seat)
-        .map(player => parseInt(player.seat))
+        .filter(player => player.seatNo)
+        .map(player => parseInt(player.seatNo))
         .sort((a, b) => a - b);
     }
     
@@ -3048,9 +3063,9 @@
       
       // 플레이어 이름 가져오기 (전체 테이블 데이터에서)
       const tableData = window.state.playerDataByTable[window.state.selectedTable] || [];
-      const btnPlayer = tableData.find(p => parseInt(p.seat) === btnPos)?.name || '빈자리';
-      const sbPlayer = tableData.find(p => parseInt(p.seat) === sbSeat)?.name || '빈자리';
-      const bbPlayer = tableData.find(p => parseInt(p.seat) === bbSeat)?.name || '빈자리';
+      const btnPlayer = tableData.find(p => parseInt(p.seatNo) === btnPos)?.name || '빈자리';
+      const sbPlayer = tableData.find(p => parseInt(p.seatNo) === sbSeat)?.name || '빈자리';
+      const bbPlayer = tableData.find(p => parseInt(p.seatNo) === bbSeat)?.name || '빈자리';
       
       display.innerHTML = `
         <div class="grid grid-cols-3 gap-2 text-center">
@@ -3085,9 +3100,9 @@
       
       // 플레이어 이름 가져오기 (전체 테이블 데이터에서)
       const tableData = window.state.playerDataByTable[window.state.selectedTable] || [];
-      const btnPlayer = tableData.find(p => parseInt(p.seat) === btnPos)?.name || '빈자리';
-      const sbPlayer = tableData.find(p => parseInt(p.seat) === sbSeat)?.name || '빈자리';
-      const bbPlayer = tableData.find(p => parseInt(p.seat) === bbSeat)?.name || '빈자리';
+      const btnPlayer = tableData.find(p => parseInt(p.seatNo) === btnPos)?.name || '빈자리';
+      const sbPlayer = tableData.find(p => parseInt(p.seatNo) === sbSeat)?.name || '빈자리';
+      const bbPlayer = tableData.find(p => parseInt(p.seatNo) === bbSeat)?.name || '빈자리';
       
       indicators.innerHTML = `
         <span class="text-yellow-400">BTN: ${btnPlayer}</span>
@@ -3747,83 +3762,109 @@
     }
 
     function buildTypeFromCsv(rows){
-      // Type 시트 구조:
-      // A:Camera Preset, B:Player, C:Table, D:Notable, E:Chips, F:updatedAt, G:Seat
-      // A2: Cam1 name, A3: Cam2 name (카메라 프리셋 정보)
-      if(!rows||rows.length<1) return;
-      const header=rows[0];
-      const A2=(rows[1]&&rows[1][0])?String(rows[1][0]).trim():'';
-      const A3=(rows[2]&&rows[2][0])?String(rows[2][0]).trim():'';
-      window.state.camPreset.cam1=A2||'Cam1';
-      window.state.camPreset.cam2=A3||'Cam2';
-      // localStorage에서 마지막 카메라 번호 읽어서 표시
-      const lastCam1No = localStorage.getItem('pokerHandLogger_lastCam1');
-      const lastCam2No = localStorage.getItem('pokerHandLogger_lastCam2');
-      
-      console.log(`🎞️ 카메라 버튼 초기화:`);
-      console.log(`  ${window.state.camPreset.cam1} 저장된 번호: ${lastCam1No || '없음'}`);
-      console.log(`  ${window.state.camPreset.cam2} 저장된 번호: ${lastCam2No || '없음'}`);
-      
-      if(lastCam1No) {
-        const nextNo = parseInt(lastCam1No, 10) + 1;
-        el.cam1.textContent = `${window.state.camPreset.cam1}${pad4(nextNo)}`;
-        console.log(`  → ${window.state.camPreset.cam1} 표시: ${pad4(nextNo)}`);
-      } else {
-        el.cam1.textContent = `${window.state.camPreset.cam1}0001`;
-        console.log(`  → ${window.state.camPreset.cam1} 표시: 0001 (초기값)`);
+      // v3.5.5 - 새로운 Type 시트 구조:
+      // A:Poker Room, B:Table Name, C:Table No., D:Seat No., E:Players, F:Nationality, G:Chips, H:Keyplayer
+      console.log('[v3.5.5] 🔍 buildTypeFromCsv 시작, rows:', rows?.length || 0);
+      if(!rows||rows.length<1) {
+        console.warn('[v3.5.5] ⚠️ Type 시트 데이터가 없습니다');
+        return;
       }
-      
-      if(lastCam2No) {
-        const nextNo = parseInt(lastCam2No, 10) + 1;
-        el.cam2.textContent = `${window.state.camPreset.cam2}${pad4(nextNo)}`;
-        console.log(`  → ${window.state.camPreset.cam2} 표시: ${pad4(nextNo)}`);
-      } else {
-        el.cam2.textContent = `${window.state.camPreset.cam2}0001`;
-        console.log(`  → ${window.state.camPreset.cam2} 표시: 0001 (초기값)`);
-      }
+
+      // 카메라 프리셋 제거 - 고정값 사용
+      window.state.camPreset.cam1='Cam1';
+      window.state.camPreset.cam2='Cam2';
+
+      // 카메라 버튼 초기화 (고정 프리셋 사용)
+      el.cam1.textContent = `Cam10001`;
+      el.cam2.textContent = `Cam20001`;
+      console.log(`📹 카메라 프리셋 고정값 사용: Cam1, Cam2`);
 
       const byTable={};
-      for(let i=1;i<rows.length;i++){
-        const r=rows[i]||[];
+      console.log('[v3.5.5] 📊 첫 번째 행 (헤더):', rows[0]);
+
+      // 구조 판별: 첫 행이 "Camera Preset"으로 시작하면 기존 구조
+      const isOldFormat = rows[0] && String(rows[0][0]).includes('Camera');
+
+      if(isOldFormat) {
+        console.log('[v3.5.5] 🔄 기존 Type 시트 구조 감지 - 폴백 모드 사용');
+
+        // 기존 구조로 파싱
         // A:Camera Preset, B:Player, C:Table, D:Notable, E:Chips, F:updatedAt, G:Seat, H:Status
-        const player=String(r[1]||'').trim();
-        const table =String(r[2]||'').trim();
-        const notable = String(r[3]||'').toUpperCase()==='TRUE';
-        const chips = String(r[4]!=null?r[4]:'0').trim();
-        const updatedAt = String(r[5]||'').trim(); // F열: updatedAt
-        const seat = String(r[6]||'').trim(); // G열: Seat
-        const status = String(r[7]||'IN').trim().toUpperCase(); // H열: Status (기본값: IN)
+        for(let i=1;i<rows.length;i++){
+          const r=rows[i]||[];
+          const player = String(r[1]||'').trim();
+          const tableNo = String(r[2]||'').trim();
+          const notable = String(r[3]||'').toUpperCase()==='TRUE';
+          const chips = String(r[4]!=null?r[4]:'0').trim();
+          const seatNo = String(r[6]||'').trim();
+          const status = String(r[7]||'IN').trim().toUpperCase();
 
-        console.log(`[v3.4.3] 플레이어 처리: ${player} (${table}) - 상태: ${status}`);
+          if(player && tableNo && status === 'IN'){
+            if(!byTable[tableNo]) byTable[tableNo]=[];
+            byTable[tableNo].push({
+              name: player,
+              chips,
+              keyplayer: notable,
+              seatNo: seatNo,
+              nationality: '',
+              pokerRoom: '',
+              tableName: '',
+              tableNo: tableNo
+            });
+            console.log(`[v3.5.5] 기존 형식: ${player} 추가됨 (Table ${tableNo}, Seat ${seatNo})`);
+          }
+        }
+      } else {
+        // 새로운 구조로 파싱
+        for(let i=1;i<rows.length;i++){
+          const r=rows[i]||[];
+          // console.log(`[v3.5.5] 행 ${i} 원본 데이터:`, r);  // 성능을 위해 비활성화
 
-        // IN 상태인 플레이어만 처리 (빈 값이면 IN으로 간주)
-        if(player && table && status === 'IN'){
-          if(!byTable[table]) byTable[table]=[];
-          // v3.4.3: 중복 필터링 완전 제거 - 모든 플레이어를 로컬 데이터에 유지
-          // 중복 제거는 별도 시스템에서 처리
-          byTable[table].push({
-            name: player,
-            chips,
-            notable,
-            updatedAt,
-            seat,
-            status // 상태도 저장
-          });
-          console.log(`[v3.4.3] ✅ ${player} 추가됨 (${table}, 좌석: ${seat}) - 중복 필터링 비활성화`);
-        } else {
-          console.log(`[v3.4.3] ❌ ${player} 제외됨 - 상태: ${status} (${table})`);
+          const pokerRoom = String(r[0]||'').trim(); // A열: Poker Room
+          const tableName = String(r[1]||'').trim(); // B열: Table Name
+          const tableNo = String(r[2]||'').trim();   // C열: Table No.
+          const seatNo = String(r[3]||'').trim();    // D열: Seat No.
+          const player = String(r[4]||'').trim();    // E열: Players
+          const nationality = String(r[5]||'').trim(); // F열: Nationality
+          const chips = String(r[6]!=null?r[6]:'0').trim(); // G열: Chips
+          const keyplayer = String(r[7]||'').toUpperCase()==='TRUE'; // H열: Keyplayer
+
+          // console.log(`[v3.5.5] 파싱 결과: Player="${player}", Table="${tableNo}", Seat="${seatNo}", Room="${pokerRoom}"`);  // 성능 최적화
+
+          // 플레이어와 테이블 번호가 있으면 처리
+          if(player && tableNo){
+            if(!byTable[tableNo]) byTable[tableNo]=[];
+
+            byTable[tableNo].push({
+              name: player,
+              chips,
+              keyplayer,       // notable -> keyplayer
+              nationality,     // 새 필드
+              seatNo,         // seat -> seatNo
+              pokerRoom,      // 새 필드
+              tableName,      // 새 필드
+              tableNo         // 새 필드
+            });
+            console.log(`[v3.5.5] ✅ ${player} 추가됨 (Table ${tableNo}, Seat ${seatNo}, ${nationality})`);
+          } else {
+            console.log(`[v3.5.5] ❌ ${player} 제외됨 - 필수 정보 누락`);
+          }
         }
       }
 
       // 처리 결과 요약 로그
-      console.log(`[v3.4.3] === buildTypeFromCsv 완료 ===`);
-      console.log(`[v3.4.3] 총 테이블 수: ${Object.keys(byTable).length}`);
-      Object.keys(byTable).forEach(table => {
-        console.log(`[v3.4.3] ${table}: ${byTable[table].length}명 (IN 상태만)`);
+      console.log(`[v3.5.5] === buildTypeFromCsv 완료 ===`);
+      console.log(`[v3.5.5] 총 테이블 수: ${Object.keys(byTable).length}`);
+      Object.keys(byTable).forEach(tableNo => {
+        console.log(`[v3.5.5] Table ${tableNo}: ${byTable[tableNo].length}명`);
       });
 
       window.state.playerDataByTable=byTable;
       window.state.allTables=Object.keys(byTable).sort();
+
+      // 디버깅 로그 추가
+      console.log('[v3.5.5] 📋 playerDataByTable:', window.state.playerDataByTable);
+      console.log('[v3.5.5] 🎯 allTables:', window.state.allTables);
     }
 
     function buildIndexFromCsv(rows){
@@ -4312,7 +4353,7 @@
       // PLAYERS
       const players = window.state.playersInHand.map((p,i)=>({
         ...p, 
-        seat: p.seat || (i+1)  // Type에서 가져온 seat 정보가 있으면 사용, 없으면 인덱스+1
+        seat: p.seatNo || (i+1)  // Type에서 가져온 seatNo 정보가 있으면 사용, 없으면 인덱스+1
       }));
       
       console.log(`%c=== PLAYER 행 생성 [${APP_VERSION}] ===`, 'color: #3b82f6; font-weight: bold');
@@ -4391,7 +4432,7 @@
       // EVENTS
       const addEv=(log)=>{
         const p=players.find(x=>x.name===log.player);
-        const seat=p?p.seat:'';
+        const seat=p?p.seatNo:'';
         const amt=log.amount? unformatNumber(log.amount):'';
         let t=(log.action||'').toUpperCase().replace(/S$/,'');
         if(t==='BET/RAISES') t='RAISE TO';
@@ -4576,10 +4617,10 @@ async function sendDataToGoogleSheet(){
         .map((p, index) => ({
           player: p.name,
           table,
-          notable: p.notable || false, // Notable 정보 추가
+          notable: p.notable || p.keyplayer || false, // Notable/Keyplayer 정보 추가
           chips: String(p.chips || ''),
           updatedAt: p.chipsUpdatedAt, // ISO. 앱 스크립트에서 Date로 set
-          seat: String(p.seat || index + 1) // Seat 정보 추가 (좌석 번호 또는 인덱스+1)
+          seat: String(p.seatNo || index + 1) // Seat 정보 추가 (좌석 번호 또는 인덱스+1)
         }));
     }
 
@@ -4712,8 +4753,32 @@ async function sendDataToGoogleSheet(){
       }
       
       // 마지막 카메라 번호 저장 및 다음 번호 준비
-      const lastCam1 = window.state.camNumbers.cam1no;
-      const lastCam2 = window.state.camNumbers.cam2no;
+      // v3.5.4 수정: 항상 구글 시트의 마지막 번호를 기준으로 +1
+      let lastCam1 = null;
+      let lastCam2 = null;
+
+      // Index 데이터에서 마지막 핸드의 카메라 번호 확인 (필수)
+      if (window.state.indexRows && window.state.indexRows.length > 0) {
+        // 가장 최근 핸드 찾기 (handNumber 기준 정렬)
+        const sortedRows = [...window.state.indexRows].sort((a, b) =>
+          parseInt(b.handNumber, 10) - parseInt(a.handNumber, 10)
+        );
+        const lastHandData = sortedRows[0];
+
+        if (lastHandData) {
+          // 구글 시트의 마지막 카메라 번호 사용 (항상 이것을 기준으로!)
+          lastCam1 = lastHandData.cam1no;
+          lastCam2 = lastHandData.cam2no;
+          console.log(`📊 구글 시트 마지막 핸드 #${lastHandData.handNumber}: cam1=${lastCam1}, cam2=${lastCam2}`);
+        }
+      }
+
+      // 구글 시트에서 데이터를 못 가져왔으면 경고
+      if (!lastCam1 && !lastCam2) {
+        console.warn('⚠️ 구글 시트에서 카메라 번호를 찾을 수 없음. 기본값 0 사용');
+        lastCam1 = '0';
+        lastCam2 = '0';
+      }
       
       // 플레이어 유지하면서 새 핸드 시작
       console.log('🔄 새 핸드 시작 - 플레이어 초기화');
@@ -4740,8 +4805,10 @@ async function sendDataToGoogleSheet(){
       
       // v3.5.2 - 단순화된 카메라 번호 증가 로직: 이전 핸드 번호 + 1
       console.log('📷 새 핸드 - 카메라 번호 자동 증가 (이전 + 1):');
-      console.log(`  이전 cam1: ${lastCam1 || '없음'}`);
-      console.log(`  이전 cam2: ${lastCam2 || '없음'}`);
+      console.log(`  현재 state.camNumbers.cam1no: ${window.state.camNumbers.cam1no}`);
+      console.log(`  현재 state.camNumbers.cam2no: ${window.state.camNumbers.cam2no}`);
+      console.log(`  구글 시트에서 가져온 lastCam1: ${lastCam1 || '없음'}`);
+      console.log(`  구글 시트에서 가져온 lastCam2: ${lastCam2 || '없음'}`);
 
       // cam1: 이전 번호 + 1 (없으면 1부터 시작)
       const currentNum1 = parseInt(lastCam1, 10) || 0;
@@ -6484,7 +6551,7 @@ async function sendDataToGoogleSheet(){
           showFeedback(`✅ ${playerName} 좌석 ${newSeat}으로 변경`);
           // 메모리 업데이트
           const player = window.state.playerDataByTable[window.state.selectedTable]?.find(p => p.name === playerName);
-          if (player) player.seat = newSeat;
+          if (player) player.seatNo = newSeat;
           renderPlayerSelection();
         } else {
           showFeedback(`❌ 좌석 변경 실패: ${result.error}`, true);
@@ -6686,9 +6753,10 @@ async function sendDataToGoogleSheet(){
           updateTimeDisplay();
           logMessage(`✅ ${APP_VERSION} 준비 완료!`);
 
-          // 중복 검사 실행 (직접 호출로 이중 실행 방지)
-          logMessage(`🔍 중복 플레이어 검사 시작...`);
-          if (window.removeDuplicatePlayers && typeof window.removeDuplicatePlayers === 'function') {
+          // 중복 검사 실행 (성능을 위해 옵션으로 변경)
+          const skipDuplicateCheck = localStorage.getItem('skipDuplicateCheck') === 'true';
+          if (!skipDuplicateCheck && window.removeDuplicatePlayers && typeof window.removeDuplicatePlayers === 'function') {
+            logMessage(`🔍 중복 플레이어 검사 시작...`);
             try {
               // skipModalOpen=true로 모달 중복 열기 방지
               const result = await window.removeDuplicatePlayers(true);
@@ -6703,6 +6771,8 @@ async function sendDataToGoogleSheet(){
               console.error('중복 검사 오류:', duplicateError);
               logMessage(`⚠️ 중복 검사 실패: ${duplicateError.message}`, true);
             }
+          } else if (skipDuplicateCheck) {
+            logMessage(`⏭️ 중복 검사 건너뜀 (빠른 시작 모드)`);
           }
         }catch(err){
           console.error(err); logMessage(`초기화 실패: ${err.message}`, true);
