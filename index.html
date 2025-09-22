@@ -743,7 +743,7 @@
   // ========================================
   // 중앙 버전 관리 시스템
   // ========================================
-  const APP_VERSION = 'v3.5.10';
+  const APP_VERSION = 'v3.5.11';
   const VERSION_DATE = '2025-09-22';
   const VERSION_INFO = `포커 핸드 로거 ${APP_VERSION} (${VERSION_DATE})`;
 
@@ -1936,16 +1936,19 @@
         `;
         
         button.onclick = () => {
-          console.log(`[DEBUG] 테이블 선택: ${table}`);
+          console.log(`🎯 [DEBUG v3.5.10] 테이블 선택: ${table}`);
           window.state.selectedTable = table;
           window.state.playersInHand = [];
 
           // 선택한 테이블의 데이터 확인
           const tableData = window.state.playerDataByTable[table];
-          console.log(`[DEBUG] 선택한 테이블의 플레이어 데이터:`, tableData);
-          console.log(`[DEBUG] 플레이어 수: ${tableData ? tableData.length : 0}`);
+          console.log(`📊 [DEBUG v3.5.10] 선택한 테이블의 플레이어 데이터:`, tableData);
+          console.log(`👥 [DEBUG v3.5.10] 플레이어 수: ${tableData ? tableData.length : 0}`);
 
+          console.log(`🔄 [DEBUG v3.5.10] updateSelectedTableDisplay 호출`);
           updateSelectedTableDisplay();
+
+          console.log(`❌ [DEBUG v3.5.10] closeTableSelectorModal 호출`);
           closeTableSelectorModal();
 
           // 테이블 관리 모드인지 확인
@@ -1960,6 +1963,7 @@
             window.isTableManagementMode = false;
           } else {
             // 일반 모드: 기본 렌더링
+            console.log(`🎨 [DEBUG v3.5.10] renderAll 호출`);
             renderAll();
           }
         };
@@ -1991,13 +1995,17 @@
       document.getElementById('table-search').value = '';
     }
     function renderPlayerSelection(){
+      console.log(`🔍 [DEBUG] renderPlayerSelection 함수 시작`);
       const seatButtons = document.getElementById('seat-buttons');
-      if(!seatButtons) return;
+      if(!seatButtons) {
+        console.log(`❌ [DEBUG] seat-buttons 요소를 찾을 수 없음`);
+        return;
+      }
 
       // 디버깅 로그 추가
-      console.log(`[DEBUG] renderPlayerSelection 호출`);
-      console.log(`[DEBUG] 선택된 테이블: ${window.state.selectedTable}`);
-      console.log(`[DEBUG] playerDataByTable 전체:`, window.state.playerDataByTable);
+      console.log(`🎯 [DEBUG] 선택된 테이블: ${window.state.selectedTable}`);
+      console.log(`📊 [DEBUG] playerDataByTable 전체:`, window.state.playerDataByTable);
+      console.log(`🏁 [DEBUG] 전체 테이블 목록:`, window.state.allTables);
       console.log(`[DEBUG] 전체 테이블 목록:`, window.state.allTables);
 
       if(!window.state.selectedTable){
@@ -2019,8 +2027,11 @@
       
       // 1-10번 좌석 버튼 (좌석 번호 표시 제거)
       for(let seatNum = 1; seatNum <= 10; seatNum++){
-        // Type 시트에서 해당 좌석의 플레이어 찾기
-        const playerData = tableData.find(p => parseInt(p.seatNo) === seatNum);
+        // Type 시트에서 해당 좌석의 플레이어 찾기 (#1, #2 형태의 문자열을 숫자로 변환)
+        const playerData = tableData.find(p => {
+          const seatNoNumber = parseInt(p.seatNo.replace('#', ''));
+          return seatNoNumber === seatNum;
+        });
 
         // 디버깅: 좌석별 플레이어 데이터 확인
         if(seatNum <= 3) { // 처음 3개 좌석만 로그
@@ -3867,14 +3878,24 @@
       }
 
       // 처리 결과 요약 로그
-      console.log(`[v3.5.5] === buildTypeFromCsv 완료 ===`);
-      console.log(`[v3.5.5] 총 테이블 수: ${Object.keys(byTable).length}`);
+      console.log(`🎉 [v3.5.10] === buildTypeFromCsv 완료 ===`);
+      console.log(`📊 [v3.5.10] 총 테이블 수: ${Object.keys(byTable).length}`);
       Object.keys(byTable).forEach(tableNo => {
-        console.log(`[v3.5.5] Table ${tableNo}: ${byTable[tableNo].length}명`);
+        console.log(`🏓 [v3.5.10] Table ${tableNo}: ${byTable[tableNo].length}명`);
+        // 각 테이블의 첫 번째 플레이어 정보 출력
+        if(byTable[tableNo].length > 0) {
+          const firstPlayer = byTable[tableNo][0];
+          console.log(`   📝 첫 번째 플레이어: ${firstPlayer.name}, 좌석: ${firstPlayer.seatNo} (타입: ${typeof firstPlayer.seatNo})`);
+        }
       });
 
       window.state.playerDataByTable=byTable;
       window.state.allTables=Object.keys(byTable).sort();
+
+      console.log(`💾 [v3.5.10] 상태 저장 완료:`, {
+        playerDataByTable: Object.keys(window.state.playerDataByTable),
+        allTables: window.state.allTables
+      });
 
       // 디버깅 로그 추가
       console.log('[v3.5.5] 📋 playerDataByTable:', window.state.playerDataByTable);
@@ -4410,9 +4431,14 @@
         const positions = getPositionsForSeat(parseInt(p.seat) || 1);
         const positionStr = positions.length > 0 ? positions.join(',') : '';
         
-        // PLAYER 형식: B=PLAYER, C=name, D=seat, E=0, F=시작칩, G=종료칩, H=핸드, I=포지션
-        // push 함수가 자동으로 행번호를 A열에 추가하므로 8개 요소 필요
-        const playerRow = ['PLAYER', p.name, parseInt(p.seat) || 1, 0, initialChips, finalChips, p.hand?.length? p.hand.join(' ') : '', positionStr];
+        // Type 시트에서 가져온 플레이어 정보 추가
+        const playerFromType = window.state.playerDataByTable?.[window.state.selectedTable]?.find(tp => tp.name === p.name);
+        const keyplayerInfo = playerFromType ? (playerFromType.keyplayer || playerFromType.notable || '') : '';
+        const countryInfo = playerFromType ? (playerFromType.nationality || '') : '';
+
+        // PLAYER 형식: B=PLAYER, C=name, D=seat, E=0, F=시작칩, G=종료칩, H=핸드, I=포지션, J=keyplayer, K=국가
+        // push 함수가 자동으로 행번호를 A열에 추가하므로 10개 요소 필요
+        const playerRow = ['PLAYER', p.name, parseInt(p.seat) || 1, 0, initialChips, finalChips, p.hand?.length? p.hand.join(' ') : '', positionStr, keyplayerInfo, countryInfo];
         
         console.log(`  ===== PLAYER 행 생성 =====`);
         console.log(`  playerRow 배열:`, playerRow);
@@ -4439,7 +4465,8 @@
         console.log(`  push 후 저장된 행:`, pushedRow);
         console.log(`  최종 CSV 형식:`);
         console.log(`    A=${pushedRow[0]} (행번호), B=${pushedRow[1]} (PLAYER), C=${pushedRow[2]} (이름), D=${pushedRow[3]} (#좌석),`);
-        console.log(`    E=${pushedRow[4]} (0 고정값), F=${pushedRow[5]} (시작칩), G=${pushedRow[6]} (종료칩), H=${pushedRow[7]} (핸드), I=${pushedRow[8]} (포지션)`);
+        console.log(`    E=${pushedRow[4]} (0 고정값), F=${pushedRow[5]} (시작칩), G=${pushedRow[6]} (종료칩), H=${pushedRow[7]} (핸드), I=${pushedRow[8]} (포지션),`);
+        console.log(`    J=${pushedRow[9]} (키플레이어), K=${pushedRow[10]} (국가)`);
         console.log(`--- ${p.name} 처리 완료 ---\n`);
       });
 
