@@ -126,7 +126,7 @@
   <meta http-equiv="cache-control" content="no-cache, must-revalidate, max-age=0" />
   <meta http-equiv="pragma" content="no-cache" />
   <meta http-equiv="expires" content="0" />
-  <title>포커 핸드 로거 v3.5.7</title>
+  <title>포커 핸드 로거 v3.5.8</title>
   <script src="https://cdn-tailwindcss.vercel.app/"></script>
   <script src="archive/chip-analysis-module.js?v=3.0.0" defer></script>
   <!-- 테이블 관리 모듈 v59 - IN/OUT 두 가지 상태만 사용 -->
@@ -743,7 +743,7 @@
   // ========================================
   // 중앙 버전 관리 시스템
   // ========================================
-  const APP_VERSION = 'v3.5.7';
+  const APP_VERSION = 'v3.5.8';
   const VERSION_DATE = '2025-09-22';
   const VERSION_INFO = `포커 핸드 로거 ${APP_VERSION} (${VERSION_DATE})`;
 
@@ -2067,7 +2067,7 @@
       const currentBtnPos = window.state.buttonPosition || '';
       
       // 전체 테이블 플레이어 리스트에서 좌석이 있는 플레이어들 가져오기
-      const allPlayersWithSeats = tableData.filter(player => player.seat).map(player => ({
+      const allPlayersWithSeats = tableData.filter(player => player.seatNo).map(player => ({
         seat: parseInt(player.seatNo),
         name: player.name
       })).sort((a, b) => a.seat - b.seat);
@@ -2733,10 +2733,10 @@
         const player = window.state.playersInHand[i];
         window.state.playersInHand.splice(i,1);
         // seatMap에서도 제거
-        if(player.seat) {
-          delete window.state.seatMap[player.seat];
+        if(player.seatNo) {
+          delete window.state.seatMap[player.seatNo];
         }
-        console.log(`➖ ${name} 게임에서 제외 (Seat ${player.seat})`);
+        console.log(`➖ ${name} 게임에서 제외 (Seat ${player.seatNo})`);
       } else {
         // 플레이어 추가 (게임에 참여)
         const pool=window.state.playerDataByTable[window.state.selectedTable]||[];
@@ -6021,7 +6021,7 @@ async function sendDataToGoogleSheet(){
         return;
       }
 
-      player.seat = newSeat;
+      player.seatNo = newSeat;
 
       // 변경 사항 추적
       if (!window.managementState.changes.added.includes(player.name)) {
@@ -6405,11 +6405,11 @@ async function sendDataToGoogleSheet(){
         <div class="flex items-center justify-between bg-gray-600 p-2 rounded player-list-item" data-player="${player.name}">
           <div class="flex-1">
             <span class="font-medium">${player.name}</span>
-            ${player.seat ? `<span class="text-xs text-gray-400 ml-2">좌석 ${player.seat}</span>` : ''}
+            ${player.seatNo ? `<span class="text-xs text-gray-400 ml-2">좌석 ${player.seatNo}</span>` : ''}
           </div>
           <div class="flex items-center gap-2">
             <input type="number" class="bg-gray-700 px-2 py-1 rounded text-sm w-16 seat-input"
-                   value="${player.seat || ''}" placeholder="좌석" min="1" max="10"
+                   value="${player.seatNo || ''}" placeholder="좌석" min="1" max="10"
                    data-player="${player.name}">
             <input type="text" class="bg-gray-700 px-2 py-1 rounded text-sm w-20 chips-input"
                    value="${formatNumber(player.chips || '0')}" placeholder="칩"
