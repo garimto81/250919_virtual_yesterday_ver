@@ -126,7 +126,7 @@
   <meta http-equiv="cache-control" content="no-cache, must-revalidate, max-age=0" />
   <meta http-equiv="pragma" content="no-cache" />
   <meta http-equiv="expires" content="0" />
-  <title>포커 핸드 로거 v3.5.9</title>
+  <title>포커 핸드 로거 v3.6.0</title>
   <script src="https://cdn-tailwindcss.vercel.app/"></script>
   <script src="archive/chip-analysis-module.js?v=3.0.0" defer></script>
   <!-- 테이블 관리 모듈 v59 - IN/OUT 두 가지 상태만 사용 -->
@@ -743,7 +743,7 @@
   // ========================================
   // 중앙 버전 관리 시스템
   // ========================================
-  const APP_VERSION = 'v3.5.9';
+  const APP_VERSION = 'v3.6.0';
   const VERSION_DATE = '2025-09-22';
   const VERSION_INFO = `포커 핸드 로거 ${APP_VERSION} (${VERSION_DATE})`;
 
@@ -2055,10 +2055,10 @@
                   </button>`;
         } else {
           // 빈 좌석
-          html += `<button class="seat-empty-btn btn bg-gray-800 ${borderClass} px-1 py-0.5 text-[9px] rounded h-7" 
+          html += `<button class="seat-empty-btn btn bg-gray-800 hover:bg-gray-700 ${borderClass} px-1 py-0.5 text-[9px] rounded h-7 cursor-pointer"
                     data-seat="${seatNum}"
-                    title="#${seatNum}: 빈자리">
-                    <div class="text-gray-600">${positionBadge || '•'}</div>
+                    title="#${seatNum}: 빈자리 (클릭하여 플레이어 추가)">
+                    <div class="text-gray-600 hover:text-gray-400">${positionBadge || '+'}</div>
                   </button>`;
         }
       }
@@ -5059,8 +5059,9 @@ async function sendDataToGoogleSheet(){
           // 플레이어가 있는 좌석 클릭 - 게임 참여 토글
           togglePlayerInHand(playerName);
         } else {
-          // 빈 좌석 클릭 - 나중에 필요시 플레이어 추가 기능
+          // 빈 좌석 클릭 - 해당 좌석에 플레이어 추가
           console.log(`빈 #${seatNum} 클릭`);
+          openQuickPlayerAddModal(seatNum);
         }
       });
 
@@ -5997,6 +5998,88 @@ async function sendDataToGoogleSheet(){
       renderManagementPlayersList();
       updateChangesSummary();
       showFeedback(`${name} #${seatNumber}에 추가됨`);
+    }
+
+    // 빈 좌석 클릭 시 빠른 플레이어 추가
+    function openQuickPlayerAddModal(seatNum) {
+      if (!window.state.selectedTable) {
+        showFeedback('먼저 테이블을 선택해주세요', true);
+        return;
+      }
+
+      // 현재 테이블의 플레이어 목록에서 해당 좌석 체크
+      const tableData = window.state.playerDataByTable[window.state.selectedTable] || [];
+      const existingPlayer = tableData.find(p => parseInt(p.seatNo) === parseInt(seatNum));
+
+      if (existingPlayer) {
+        showFeedback(`#${seatNum}에는 이미 ${existingPlayer.name}이(가) 있습니다`, true);
+        return;
+      }
+
+      const playerName = prompt(`#${seatNum}에 추가할 플레이어 이름을 입력하세요:`);
+      if (!playerName || !playerName.trim()) {
+        return;
+      }
+
+      // 중복 플레이어 체크
+      const duplicatePlayer = tableData.find(p => p.name.toLowerCase() === playerName.trim().toLowerCase());
+      if (duplicatePlayer) {
+        showFeedback(`${playerName}은(는) 이미 이 테이블에 있습니다 (#${duplicatePlayer.seatNo})`, true);
+        return;
+      }
+
+      // 새 플레이어를 Google Sheets에 추가
+      addQuickPlayer(playerName.trim(), seatNum);
+    }
+
+    // 빠른 플레이어 추가 (Google Sheets에 직접 추가)
+    async function addQuickPlayer(playerName, seatNum) {
+      try {
+        showFeedback(`${playerName}을(를) #${seatNum}에 추가 중...`);
+
+        // Type 시트에 새 플레이어 추가
+        const newPlayerData = [
+          '', // Poker Room (빈값)
+          '', // Table Name (빈값)
+          window.state.selectedTable, // Table No.
+          seatNum, // Seat No.
+          playerName, // Players
+          '', // Nationality (빈값)
+          '100000', // Chips (기본값)
+          'FALSE' // Keyplayer (기본값)
+        ];
+
+        const result = await appendToSheet(CSV_TYPE_URL, newPlayerData);
+
+        if (result.success) {
+          showFeedback(`✅ ${playerName}을(를) #${seatNum}에 추가했습니다`);
+
+          // 로컬 상태 업데이트
+          if (!window.state.playerDataByTable[window.state.selectedTable]) {
+            window.state.playerDataByTable[window.state.selectedTable] = [];
+          }
+
+          window.state.playerDataByTable[window.state.selectedTable].push({
+            name: playerName,
+            seatNo: seatNum,
+            chips: '100000',
+            keyplayer: false,
+            nationality: '',
+            pokerRoom: '',
+            tableName: '',
+            tableNo: window.state.selectedTable
+          });
+
+          // UI 업데이트
+          renderPlayerSelection();
+          renderAll();
+        } else {
+          showFeedback(`❌ 플레이어 추가 실패: ${result.error}`, true);
+        }
+      } catch (error) {
+        console.error('빠른 플레이어 추가 오류:', error);
+        showFeedback('플레이어 추가 중 오류가 발생했습니다', true);
+      }
     }
 
     // 기존 플레이어 추가 UI 숨기기 (10개 시트에서 직접 입력하므로)
