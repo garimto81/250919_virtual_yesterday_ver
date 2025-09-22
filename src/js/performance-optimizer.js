@@ -77,19 +77,26 @@ class PerformanceOptimizer {
         const moveY = Math.abs(touchEndY - touchStartY);
 
         if (moveX < threshold && moveY < threshold) {
-          e.preventDefault();
+          // 버튼과 클릭 가능한 요소만 처리
+          const target = e.target;
+          const isClickable = target.matches('button, .btn, .clickable, a, input, select, textarea');
 
-          // 즉시 클릭 이벤트 발생
-          const clickEvent = new MouseEvent('click', {
-            view: window,
-            bubbles: true,
-            cancelable: true,
-            clientX: touchEndX,
-            clientY: touchEndY
-          });
+          if (isClickable) {
+            e.preventDefault();
 
-          e.target.dispatchEvent(clickEvent);
-          this.touchHandled = true;
+            // 즉시 클릭 이벤트 발생
+            const clickEvent = new MouseEvent('click', {
+              view: window,
+              bubbles: true,
+              cancelable: true,
+              clientX: touchEndX,
+              clientY: touchEndY
+            });
+
+            e.target.dispatchEvent(clickEvent);
+            this.touchHandled = true;
+          }
+          // 클릭 가능하지 않은 요소는 스크롤 허용
         }
       }
     }, { passive: false });
