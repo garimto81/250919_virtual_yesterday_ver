@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>포커 핸드 로거 v3.5.31 (최소 버전)</title>
+  <style>
+    body {
+      background: #1a1a2e;
+      color: #eee;
+      font-family: -apple-system, system-ui, sans-serif;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .header {
+      background: #374151;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    h1 {
+      color: #fbbf24;
+      margin: 0;
+    }
+    .status {
+      background: #059669;
+      color: white;
+      padding: 10px;
+      border-radius: 6px;
+      margin: 10px 0;
+    }
+    .error {
+      background: #dc2626;
+      color: white;
+      padding: 10px;
+      border-radius: 6px;
+      margin: 10px 0;
+    }
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      margin: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    .section {
+      background: #1f2937;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    #log {
+      background: #111;
+      padding: 10px;
+      border-radius: 6px;
+      font-family: monospace;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎯 포커 핸드 로거 v3.5.31 (최소 실행 버전)</h1>
+      <div class="status">✅ 페이지 로드 성공</div>
+    </div>
+
+    <div class="section">
+      <h2>기본 기능 테스트</h2>
+      <button onclick="testBasic()">기본 테스트</button>
+      <button onclick="testStorage()">로컬 저장소</button>
+      <button onclick="testModal()">모달 테스트</button>
+      <button onclick="testLazyBinding()">지연 바인딩</button>
+    </div>
+
+    <div class="section">
+      <h2>핵심 기능</h2>
+      <button onclick="newHand()">새 핸드</button>
+      <button onclick="addPlayer()">플레이어 추가</button>
+      <button onclick="sendToSheet()">시트 전송</button>
+    </div>
+
+    <div class="section">
+      <h2>실행 로그</h2>
+      <div id="log"></div>
+    </div>
+  </div>
+
+  <script>
+    // 전역 상태 (최소)
+    let APPS_SCRIPT_URL = localStorage.getItem('APPS_SCRIPT_URL') || '';
+    const VERSION = 'v3.5.31';
+    const log = [];
+
+    // 로그 함수
+    function addLog(message, type = 'info') {
+      const time = new Date().toLocaleTimeString();
+      const entry = `[${time}] ${type.toUpperCase()}: ${message}`;
+      log.push(entry);
+
+      const logDiv = document.getElementById('log');
+      logDiv.innerHTML = log.map(l => `<div>${l}</div>`).join('');
+      logDiv.scrollTop = logDiv.scrollHeight;
+
+      console.log(entry);
+    }
+
+    // 초기화
+    window.addEventListener('DOMContentLoaded', () => {
+      addLog('페이지 초기화 시작', 'success');
+
+      // 프로토콜 체크
+      if (window.location.protocol === 'file:') {
+        addLog('file:// 프로토콜 감지 - CORS 에러 가능', 'error');
+      } else {
+        addLog(`${window.location.protocol} 프로토콜 사용 중`, 'info');
+      }
+
+      // URL 체크
+      if (!APPS_SCRIPT_URL) {
+        addLog('Apps Script URL 미설정', 'warn');
+      } else {
+        addLog('Apps Script URL 설정됨', 'success');
+      }
+
+      addLog('초기화 완료', 'success');
+    });
+
+    // 테스트 함수들
+    function testBasic() {
+      addLog('기본 테스트 실행', 'info');
+      alert('기본 기능 정상 작동!');
+    }
+
+    function testStorage() {
+      const testKey = 'test_' + Date.now();
+      localStorage.setItem(testKey, 'test_value');
+      const value = localStorage.getItem(testKey);
+
+      if (value === 'test_value') {
+        addLog('로컬 저장소 테스트 성공', 'success');
+      } else {
+        addLog('로컬 저장소 테스트 실패', 'error');
+      }
+
+      localStorage.removeItem(testKey);
+    }
+
+    function testModal() {
+      addLog('모달 테스트', 'info');
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #374151;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        z-index: 1000;
+      `;
+      modal.innerHTML = `
+        <h3>모달 테스트</h3>
+        <p>모달이 정상적으로 표시됩니다.</p>
+        <button onclick="this.parentElement.remove()">닫기</button>
+      `;
+      document.body.appendChild(modal);
+    }
+
+    function testLazyBinding() {
+      addLog('지연 바인딩 테스트 시작', 'info');
+
+      // 1초 후 버튼 생성
+      setTimeout(() => {
+        const btn = document.createElement('button');
+        btn.id = 'lazy-btn';
+        btn.textContent = '지연 생성된 버튼';
+        btn.onclick = () => addLog('지연 바인딩 버튼 클릭됨!', 'success');
+        document.querySelector('.section').appendChild(btn);
+        addLog('버튼 동적 생성 완료', 'success');
+      }, 1000);
+    }
+
+    // 핵심 기능
+    function newHand() {
+      addLog('새 핸드 시작', 'info');
+      // 실제 로직 대신 간단한 시뮬레이션
+      const handNum = Math.floor(Math.random() * 1000);
+      addLog(`핸드 #${handNum} 생성됨`, 'success');
+    }
+
+    function addPlayer() {
+      const name = prompt('플레이어 이름:');
+      if (name) {
+        addLog(`플레이어 추가: ${name}`, 'success');
+      }
+    }
+
+    function sendToSheet() {
+      if (!APPS_SCRIPT_URL) {
+        const url = prompt('Apps Script URL을 입력하세요:');
+        if (url) {
+          APPS_SCRIPT_URL = url;
+          localStorage.setItem('APPS_SCRIPT_URL', url);
+          addLog('URL 저장됨', 'success');
+        } else {
+          addLog('URL이 필요합니다', 'error');
+          return;
+        }
+      }
+
+      addLog('시트 전송 시뮬레이션...', 'info');
+      setTimeout(() => {
+        addLog('시트 전송 완료 (시뮬레이션)', 'success');
+      }, 1000);
+    }
+
+    // 에러 캐처
+    window.addEventListener('error', (e) => {
+      addLog(`에러: ${e.message} (${e.filename}:${e.lineno})`, 'error');
+    });
+
+    // 초기 메시지
+    addLog(`포커 핸드 로거 ${VERSION} 로드됨`, 'info');
+  </script>
+</body>
+</html>

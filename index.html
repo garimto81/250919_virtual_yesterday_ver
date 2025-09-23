@@ -2,10 +2,16 @@
 <!--
   ============================================
   포커 핸드 로거 (Poker Hand Logger)
-  Version: 3.5.29
+  Version: 3.5.31
   Last Modified: 2025-09-23 KST
 
   Change Log:
+  - v3.5.31 (2025-09-23): 모듈 격리 패턴으로 회귀 버그 해결
+    • UrlSetupModule 독립 모듈 생성
+    • el 객체 의존성 제거
+    • 지연 바인딩 및 안전한 요소 접근
+    • 이벤트 위임 패턴 적용
+    • 초기화 순서 보장
   - v3.5.29 (2025-09-23): Apps Script URL 설정 기능 추가
     • URL 설정 버튼 및 모달 UI 추가
     • URL 설정 안내 메시지 개선
@@ -171,7 +177,7 @@
   <meta http-equiv="cache-control" content="no-cache, must-revalidate, max-age=0" />
   <meta http-equiv="pragma" content="no-cache" />
   <meta http-equiv="expires" content="0" />
-  <title>포커 핸드 로거 v3.5.29</title>
+  <title>포커 핸드 로거 v3.5.31</title>
   <script src="https://cdn-tailwindcss.vercel.app/"></script>
   <script src="archive/chip-analysis-module.js?v=3.5.25" defer></script>
   <!-- 테이블 관리 모듈 v59 - IN/OUT 두 가지 상태만 사용 -->
@@ -188,7 +194,7 @@
   <!-- 모달 자동 닫기 모듈 -->
   <script src="src/js/modal-auto-close.js?v=3.5.25" defer></script>
   <!-- 성능 최적화 모듈 -->
-  <script src="src/js/performance-optimizer.js?v=3.5.25" defer></script>
+  <script src="src/js/performance-optimizer.js?v=3.5.31" defer onerror="console.warn('performance-optimizer.js 로드 실패 - 계속 진행')"></script>
   <!-- 모바일 향상 모듈 (일시 비활성화 - 폰트 및 스크롤 문제) -->
   <!-- <script src="src/js/mobile-enhancer.js?v=1.0.0" defer></script> -->
   <style>
@@ -840,7 +846,7 @@
   // ========================================
   // 중앙 버전 관리 시스템
   // ========================================
-  const APP_VERSION = 'v3.5.29';
+  const APP_VERSION = 'v3.5.32';
   const VERSION_DATE = '2025-09-22';
   const VERSION_INFO = `포커 핸드 로거 ${APP_VERSION} (${VERSION_DATE})`;
 
@@ -1416,7 +1422,7 @@
 
   // 전역 액션 관리자 인스턴스 - 클래스 정의 직후 초기화
   window.actionManager = new ActionOrderManager();
-  console.log('ActionOrderManager 초기화 완료');
+  console.log('✅ ActionOrderManager 초기화 완료 (v3.5.31)');
 
   // 모든 버전 표시를 업데이트하는 함수
   function updateAllVersionDisplays() {
@@ -1465,9 +1471,17 @@
       const cachedUrl = localStorage.getItem('appsScriptUrl');
 
       if (cachedUrl) {
-        APPS_SCRIPT_URL = cachedUrl;
-        console.log('📂 저장된 URL 사용:', cachedUrl);
-        return cachedUrl;
+        // /exec 접미사 자동 보정 (v3.5.32)
+        let correctedUrl = cachedUrl.trim();
+        if (correctedUrl.includes('script.google.com/macros/s/') && !correctedUrl.endsWith('/exec')) {
+          correctedUrl += '/exec';
+          console.log('🔧 기존 URL 자동 보정:', cachedUrl, '->', correctedUrl);
+          localStorage.setItem('appsScriptUrl', correctedUrl);
+        }
+
+        APPS_SCRIPT_URL = correctedUrl;
+        console.log('📂 저장된 URL 사용:', correctedUrl);
+        return correctedUrl;
       }
 
       // localStorage에 URL이 없으면 기본 URL 사용
@@ -1485,6 +1499,361 @@
 
   // 즉시 초기화 실행
   initializeAppsScriptUrl();
+
+  // ========================================
+  // 지연 바인딩 시스템 (v3.5.31)
+  // 요소가 준비될 때까지 자동 재시도
+  // ========================================
+  const LazyBindingSystem = {
+    bindings: [],
+    retryCount: 0,
+    maxRetries: 10,
+    retryDelay: 500,
+
+    // 바인딩 등록
+    register(elementId, event, handler, options = {}) {
+      this.bindings.push({
+        elementId,
+        event,
+        handler,
+        options,
+        bound: false
+      });
+    },
+
+    // 바인딩 시도
+    tryBind(binding) {
+      const element = document.getElementById(binding.elementId);
+      if (element) {
+        if (binding.event === 'onclick') {
+          element.onclick = binding.handler;
+        } else {
+          element.addEventListener(binding.event, binding.handler, binding.options);
+        }
+        binding.bound = true;
+        console.log(`✅ 지연 바인딩 성공: ${binding.elementId}`);
+        return true;
+      }
+      return false;
+    },
+
+    // 모든 바인딩 시도
+    bindAll() {
+      let unboundCount = 0;
+      this.bindings.forEach(binding => {
+        if (!binding.bound) {
+          if (!this.tryBind(binding)) {
+            unboundCount++;
+          }
+        }
+      });
+
+      if (unboundCount > 0 && this.retryCount < this.maxRetries) {
+        this.retryCount++;
+        console.log(`⏳ 지연 바인딩 재시도 ${this.retryCount}/${this.maxRetries}: ${unboundCount}개 대기중`);
+        setTimeout(() => this.bindAll(), this.retryDelay);
+      } else if (unboundCount === 0) {
+        console.log('✨ 모든 지연 바인딩 완료!');
+      } else {
+        console.warn(`⚠️ ${unboundCount}개 바인딩 실패 (최대 재시도 횟수 도달)`);
+      }
+    },
+
+    // 초기화
+    init() {
+      console.log('🔄 지연 바인딩 시스템 초기화 (v3.5.31)');
+
+      // DOM 준비 후 바인딩 시작
+      if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        setTimeout(() => this.bindAll(), 100);
+      } else {
+        document.addEventListener('DOMContentLoaded', () => {
+          setTimeout(() => this.bindAll(), 100);
+        });
+      }
+    }
+  };
+
+  // ========================================
+  // 이벤트 위임 시스템 (v3.5.31)
+  // 부모 요소에서 이벤트 처리
+  // ========================================
+  const EventDelegation = {
+    handlers: new Map(),
+
+    // 이벤트 위임 등록
+    register(parentId, selector, event, handler) {
+      const key = `${parentId}-${event}`;
+      if (!this.handlers.has(key)) {
+        this.handlers.set(key, new Map());
+        this.attachListener(parentId, event);
+      }
+      this.handlers.get(key).set(selector, handler);
+    },
+
+    // 부모 요소에 리스너 부착
+    attachListener(parentId, event) {
+      const parent = document.getElementById(parentId);
+      if (parent) {
+        parent.addEventListener(event, (e) => {
+          const key = `${parentId}-${event}`;
+          const selectorMap = this.handlers.get(key);
+          if (selectorMap) {
+            for (const [selector, handler] of selectorMap) {
+              const target = e.target.closest(selector);
+              if (target) {
+                handler.call(target, e);
+                break;
+              }
+            }
+          }
+        });
+        console.log(`📌 이벤트 위임 설정: ${parentId} -> ${event}`);
+      } else {
+        // 부모 요소가 없으면 지연 바인딩으로 등록
+        LazyBindingSystem.register(parentId, event, (e) => {
+          const key = `${parentId}-${event}`;
+          const selectorMap = this.handlers.get(key);
+          if (selectorMap) {
+            for (const [selector, handler] of selectorMap) {
+              const target = e.target.closest(selector);
+              if (target) {
+                handler.call(target, e);
+                break;
+              }
+            }
+          }
+        });
+      }
+    }
+  };
+
+  // ========================================
+  // URL 설정 독립 모듈 (v3.5.31)
+  // el 객체 의존성 완전 제거 + 지연 바인딩 적용
+  // ========================================
+  const UrlSetupModule = {
+    modal: null,
+    initialized: false,
+    elements: {},
+
+    // 모듈 초기화
+    init() {
+      console.log('🔧 UrlSetupModule 초기화 시작 (v3.5.31)');
+
+      // 필요한 요소들 ID
+      const requiredIds = {
+        modal: 'url-setup-modal',
+        closeBtn: 'close-url-modal',
+        saveBtn: 'save-url-btn',
+        testBtn: 'test-url-btn',
+        input: 'apps-script-url-input',
+        statusMsg: 'url-status-message'
+      };
+
+      // 요소 찾기 및 검증
+      let allFound = true;
+      for (const [key, id] of Object.entries(requiredIds)) {
+        const element = document.getElementById(id);
+        if (element) {
+          this.elements[key] = element;
+          console.log(`✅ Found: ${id}`);
+        } else {
+          console.warn(`❌ Missing: ${id}`);
+          allFound = false;
+        }
+      }
+
+      if (!allFound) {
+        console.warn('⚠️ UrlSetupModule: 일부 요소가 없어 지연 바인딩 등록');
+        this.registerLazyBindings();
+        this.createFallbackUI();
+        return false;
+      }
+
+      this.modal = this.elements.modal;
+      this.bindEvents();
+      this.initialized = true;
+      console.log('✅ UrlSetupModule 초기화 완료');
+      return true;
+    },
+
+    // 지연 바인딩 등록
+    registerLazyBindings() {
+      if (typeof LazyBindingSystem !== 'undefined') {
+        LazyBindingSystem.register('close-url-modal', 'onclick', () => this.close());
+        LazyBindingSystem.register('save-url-btn', 'onclick', () => this.saveUrl());
+        LazyBindingSystem.register('test-url-btn', 'onclick', () => this.testUrl());
+        console.log('📝 URL 모듈 지연 바인딩 등록');
+      }
+    },
+
+    // 이벤트 바인딩 (el 객체 독립)
+    bindEvents() {
+      const { closeBtn, saveBtn, testBtn } = this.elements;
+
+      // 안전한 이벤트 리스너 등록
+      if (closeBtn) {
+        closeBtn.onclick = () => this.close();
+      }
+
+      if (saveBtn) {
+        saveBtn.onclick = () => this.saveUrl();
+      }
+
+      if (testBtn) {
+        testBtn.onclick = () => this.testConnection();
+      }
+    },
+
+    // 모달 열기
+    open() {
+      // 초기화되지 않았으면 먼저 초기화
+      if (!this.initialized) {
+        if (!this.init()) {
+          console.error('UrlSetupModule 초기화 실패');
+          // Fallback: alert 사용
+          const url = prompt('Apps Script URL을 입력하세요:', APPS_SCRIPT_URL || '');
+          if (url) {
+            this.updateUrl(url);
+          }
+          return;
+        }
+      }
+
+      const { modal, input } = this.elements;
+      if (!modal) {
+        console.error('Modal not available');
+        return;
+      }
+
+      // 현재 URL 표시
+      if (input) {
+        input.value = APPS_SCRIPT_URL || '';
+      }
+
+      // 모달 표시
+      modal.classList.remove('hidden', 'opacity-0');
+      modal.classList.add('opacity-100');
+    },
+
+    // 모달 닫기
+    close() {
+      if (this.modal) {
+        this.modal.classList.add('hidden', 'opacity-0');
+        this.modal.classList.remove('opacity-100');
+      }
+    },
+
+    // URL 저장
+    saveUrl() {
+      const { input, statusMsg } = this.elements;
+      if (!input) return;
+
+      const url = input.value.trim();
+      if (!url) {
+        this.showStatus('❌ URL을 입력해주세요.', 'error');
+        return;
+      }
+
+      if (!url.includes('script.google.com/macros/s/') || !url.endsWith('/exec')) {
+        this.showStatus('⚠️ 올바른 Apps Script URL 형식이 아닙니다.', 'warning');
+        return;
+      }
+
+      this.updateUrl(url);
+      this.showStatus('✅ URL이 저장되었습니다.', 'success');
+
+      setTimeout(() => {
+        this.close();
+        if (window.showFeedback) {
+          window.showFeedback('Apps Script URL이 설정되었습니다', false);
+        }
+      }, 1000);
+    },
+
+    // URL 업데이트
+    updateUrl(url) {
+      // /exec 접미사 자동 보정 (v3.5.32)
+      let correctedUrl = url.trim();
+      if (correctedUrl.includes('script.google.com/macros/s/') && !correctedUrl.endsWith('/exec')) {
+        correctedUrl += '/exec';
+        console.log('🔧 URL 자동 보정:', url, '->', correctedUrl);
+      }
+
+      APPS_SCRIPT_URL = correctedUrl;
+      window.APPS_SCRIPT_URL = correctedUrl;
+      localStorage.setItem('appsScriptUrl', correctedUrl);
+      console.log('✅ URL 업데이트:', correctedUrl);
+    },
+
+    // 연결 테스트
+    async testConnection() {
+      const { input } = this.elements;
+      const url = (input ? input.value.trim() : '') || APPS_SCRIPT_URL;
+
+      if (!url) {
+        this.showStatus('❌ 테스트할 URL이 없습니다.', 'error');
+        return;
+      }
+
+      this.showStatus('🔄 연결 테스트 중...', 'info');
+
+      try {
+        const response = await fetch(url + '?action=test', {
+          method: 'GET',
+          mode: 'cors'
+        });
+
+        if (response.ok) {
+          this.showStatus('✅ 연결 성공! Apps Script가 정상 작동합니다.', 'success');
+        } else {
+          this.showStatus(`⚠️ 연결됨 (상태: ${response.status})`, 'warning');
+        }
+      } catch (error) {
+        this.showStatus('❌ 연결 실패 - CORS 오류 또는 URL이 잘못되었습니다.', 'error');
+      }
+    },
+
+    // 상태 메시지 표시
+    showStatus(message, type) {
+      const { statusMsg } = this.elements;
+      if (!statusMsg) {
+        console.log(message);
+        return;
+      }
+
+      const classMap = {
+        error: 'text-sm text-red-400',
+        warning: 'text-sm text-amber-400',
+        success: 'text-sm text-green-400',
+        info: 'text-sm text-blue-400'
+      };
+
+      statusMsg.textContent = message;
+      statusMsg.className = classMap[type] || classMap.info;
+    },
+
+    // Fallback UI 생성 (요소가 없을 때)
+    createFallbackUI() {
+      console.warn('Creating fallback UI for URL setup');
+
+      // 간단한 프롬프트 기반 설정
+      window.openUrlSetupModal = () => {
+        const url = prompt('Apps Script URL을 입력하세요:\n\n1. Google Apps Script에 Code.gs 배포\n2. 배포 URL 복사\n3. 여기에 붙여넣기', APPS_SCRIPT_URL || '');
+
+        if (url && url.includes('script.google.com')) {
+          this.updateUrl(url);
+          alert('✅ URL이 저장되었습니다!');
+        }
+      };
+    }
+  };
+
+  // 전역 함수로 노출 (기존 코드 호환성)
+  window.openUrlSetupModal = () => {
+    UrlSetupModule.open();
+  };
 
   // Config 시트에서 URL 가져오기 (옵션 - URL이 있을 때만 시도)
   async function loadAppsScriptUrlFromConfig() {
@@ -1522,6 +1891,18 @@
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
+    console.log('🚀 포커 핸드 로거 v3.5.31 초기화 시작');
+
+    // 지연 바인딩 시스템 초기화
+    if (typeof LazyBindingSystem !== 'undefined') {
+      LazyBindingSystem.init();
+    }
+
+    // URL 설정 모듈 초기화
+    if (typeof UrlSetupModule !== 'undefined') {
+      UrlSetupModule.init();
+    }
+
     // Apps Script URL 확인 및 Config 시트 로드 (선택)
     if (APPS_SCRIPT_URL) {
       console.log('🔄 현재 Apps Script URL:', APPS_SCRIPT_URL);
@@ -1738,7 +2119,14 @@
     // Apps Script URL 업데이트 함수 (클라우드 동기화 포함)
     async function updateAppsScriptUrl(newUrl, skipCloudSync = false) {
       if (newUrl && newUrl.trim()) {
-        APPS_SCRIPT_URL = newUrl.trim();
+        // /exec 접미사 자동 보정 (v3.5.32)
+        let correctedUrl = newUrl.trim();
+        if (correctedUrl.includes('script.google.com/macros/s/') && !correctedUrl.endsWith('/exec')) {
+          correctedUrl += '/exec';
+          console.log('🔧 URL 자동 보정:', newUrl, '->', correctedUrl);
+        }
+
+        APPS_SCRIPT_URL = correctedUrl;
         window.APPS_SCRIPT_URL = APPS_SCRIPT_URL;
         localStorage.setItem('appsScriptUrl', APPS_SCRIPT_URL);
         console.log('✅ Apps Script URL 업데이트:', APPS_SCRIPT_URL);
@@ -2034,15 +2422,23 @@
 
     // ====== LOG MODAL ======
     function openLogModal(){
-      el.logModal.classList.remove('hidden');
-      el.logModal.classList.remove('opacity-0');
+      if (el && el.logModal) {
+        el.logModal.classList.remove('hidden');
+        el.logModal.classList.remove('opacity-0');
+      }
     }
-    function closeLogModal(){ el.logModal.classList.add('opacity-0', 'hidden'); }
+    function closeLogModal(){
+      if (el && el.logModal) el.logModal.classList.add('opacity-0', 'hidden');
+    }
     function logMessage(msg,isError=false){
+      console.log(msg); // 항상 콘솔에 출력
+      if (!el || !el.logDisplay) return; // el 객체 없으면 리턴
+
       const d=document.createElement('div');
       d.textContent=`[${new Date().toLocaleTimeString()}] ${msg}`;
       d.className=isError?'text-red-400':'text-green-400';
-      el.logDisplay.appendChild(d); el.logDisplay.scrollTop=el.logDisplay.scrollHeight;
+      el.logDisplay.appendChild(d);
+      el.logDisplay.scrollTop=el.logDisplay.scrollHeight;
     }
 
     // 전역 함수로 노출 (DuplicateRemover에서 접근 가능하도록)
@@ -4041,13 +4437,25 @@
 
     // ====== CSV LOADERS ======
     async function fetchCsv(url){
-      const res=await fetch(url);
-      if(!res.ok) {
-        console.log(`CSV fetch status: ${res.status}`);
-        return []; // 빈 배열 반환
+      try {
+        // CORS 에러 방지 - file:// 프로토콜 체크
+        if (window.location.protocol === 'file:') {
+          console.warn('⚠️ file:// 프로토콜 감지 - Google Sheets 접근 스킵');
+          console.log('💡 http://localhost:8000 또는 8080으로 접속하면 정상 작동합니다');
+          return []; // 빈 배열 반환
+        }
+
+        const res=await fetch(url);
+        if(!res.ok) {
+          console.log(`CSV fetch status: ${res.status}`);
+          return []; // 빈 배열 반환
+        }
+        const txt=await res.text();
+        return parseCSV(txt);
+      } catch(error) {
+        console.warn('CSV 로드 실패 (CORS 또는 네트워크 에러):', error.message);
+        return []; // 에러 시에도 빈 배열 반환
       }
-      const txt=await res.text();
-      return parseCSV(txt);
     }
 
     function buildTypeFromCsv(rows){
@@ -4304,9 +4712,25 @@
 
     // ====== LOADERS (initial) ======
     async function loadInitial(){
-      openLogModal(); el.logDisplay.innerHTML='';
+      // file:// 프로토콜에서는 로그 모달 스킵
+      if (window.location.protocol !== 'file:') {
+        openLogModal();
+        if (el.logDisplay) el.logDisplay.innerHTML='';
+      }
+
       logMessage(`🚀 ${APP_VERSION} 초기 데이터 로딩 시작 (Type/Index) ...`);
+
       try{
+        // file:// 프로토콜이면 CSV 로드 스킵
+        if (window.location.protocol === 'file:') {
+          console.log('📌 로컬 파일 모드 - CSV 로드 스킵');
+          buildTypeFromCsv([]);
+          buildIndexFromCsv([]);
+          renderPlayerSelection();
+          closeLogModal();
+          return;
+        }
+
         const [typeRows, idxRows] = await Promise.all([
           CSV_TYPE_URL.includes('http')? fetchCsv(CSV_TYPE_URL) : Promise.resolve([]),
           CSV_INDEX_URL.includes('http')? fetchCsv(CSV_INDEX_URL) : Promise.resolve([])
@@ -4752,7 +5176,9 @@ async function sendDataToGoogleSheet(){
       
     } else if(json.status !== 'success'){
       logMessage('⚠️ Apps Script가 success를 반환하지 않았습니다.');
-      logMessage('⚠️ 시트 확인 후 수동으로 재설정 버튼을 눌러주세요.');
+      logMessage(`⚠️ 응답 내용: ${JSON.stringify(json)}`);
+      logMessage('⚠️ Google Sheets에서 데이터 저장 여부를 확인해주세요.');
+      logMessage('⚠️ 확인 후 새 핸드 시작을 위해 리셋 버튼(🔄)을 눌러주세요.');
       showFeedback('⚠️ 시트 전송 확인 필요', true);
       // 성공 여부가 불확실하므로 자동 재설정하지 않음
       
@@ -4784,7 +5210,7 @@ async function sendDataToGoogleSheet(){
     logMessage(`❌ 전송 실패: ${err.message}`, true);
     showFeedback(`❌ 전송 실패: ${err.message}`, true);
     // 전송 실패 시에는 재설정하지 않음
-    logMessage('⚠️ 다시 시도하거나 수동으로 재설정해주세요.');
+    logMessage('⚠️ 다시 시도하거나 리셋 버튼(🔄)을 눌러주세요.');
   }finally{
     closeLogModal(); // 로그를 좀 더 오래 보여줌
   }
@@ -5042,88 +5468,51 @@ async function sendDataToGoogleSheet(){
     window.showFeedback = showFeedback;
     window.openCardSelector = openCardSelector;
 
-    // URL 설정 모달 열기 (v3.5.29)
-    function openUrlSetupModal() {
-      const modal = el.urlSetupModal;
-      const input = document.getElementById('apps-script-url-input');
-      const statusMsg = document.getElementById('url-status-message');
-
-      // 현재 URL 표시
-      input.value = APPS_SCRIPT_URL || '';
-      statusMsg.textContent = '';
-
-      openModal(modal);
-
-      // 이벤트 리스너 설정
-      document.getElementById('close-url-modal').onclick = () => closeModal(modal);
-
-      document.getElementById('save-url-btn').onclick = async () => {
-        const url = input.value.trim();
-        if (!url) {
-          statusMsg.className = 'text-sm text-red-400';
-          statusMsg.textContent = '❌ URL을 입력해주세요.';
-          return;
-        }
-
-        if (!url.includes('script.google.com/macros/s/') || !url.endsWith('/exec')) {
-          statusMsg.className = 'text-sm text-amber-400';
-          statusMsg.textContent = '⚠️ 올바른 Apps Script URL 형식이 아닙니다.';
-          return;
-        }
-
-        // URL 저장
-        APPS_SCRIPT_URL = url;
-        window.APPS_SCRIPT_URL = url;
-        localStorage.setItem('appsScriptUrl', url);
-
-        statusMsg.className = 'text-sm text-green-400';
-        statusMsg.textContent = '✅ URL이 저장되었습니다.';
-
-        setTimeout(() => {
-          closeModal(modal);
-          showFeedback('Apps Script URL이 설정되었습니다', false);
-        }, 1000);
-      };
-
-      document.getElementById('test-url-btn').onclick = async () => {
-        const url = input.value.trim() || APPS_SCRIPT_URL;
-        if (!url) {
-          statusMsg.className = 'text-sm text-red-400';
-          statusMsg.textContent = '❌ 테스트할 URL이 없습니다.';
-          return;
-        }
-
-        statusMsg.className = 'text-sm text-blue-400';
-        statusMsg.textContent = '🔄 연결 테스트 중...';
-
-        try {
-          const response = await fetch(url + '?action=test', {
-            method: 'GET',
-            mode: 'cors'
-          });
-
-          if (response.ok) {
-            statusMsg.className = 'text-sm text-green-400';
-            statusMsg.textContent = '✅ 연결 성공! Apps Script가 정상 작동합니다.';
-          } else {
-            statusMsg.className = 'text-sm text-amber-400';
-            statusMsg.textContent = `⚠️ 연결됨 (상태: ${response.status})`;
-          }
-        } catch (error) {
-          statusMsg.className = 'text-sm text-red-400';
-          statusMsg.textContent = '❌ 연결 실패 - CORS 오류 또는 URL이 잘못되었습니다.';
-        }
-      };
-    }
+    // URL 설정 모달 열기 함수는 UrlSetupModule로 대체됨 (v3.5.31)
+    // window.openUrlSetupModal은 UrlSetupModule.open()을 호출
 
     // ====== EVENT LISTENERS ======
     function setupEventListeners(){
+      // el 객체가 없으면 지연 바인딩 등록
+      if (!el || !el.loadHandBtn) {
+        console.warn('⚠️ el 객체 미초기화 - 지연 바인딩 등록');
+        if (typeof LazyBindingSystem !== 'undefined') {
+          // 핵심 버튼들 지연 바인딩
+          LazyBindingSystem.register('load-hand-btn', 'onclick', openLoadHandModal);
+          LazyBindingSystem.register('refresh-data-btn', 'onclick', () => executeWithLock(loadInitial, '데이터 새로고침', '최신 데이터를 불러오고 있습니다...'));
+          LazyBindingSystem.register('reset-btn', 'onclick', () => executeWithLock(resetApp, '앱 리셋', '앱을 초기화하고 있습니다...'));
+          LazyBindingSystem.register('set-url-btn', 'onclick', () => {
+            if (typeof openUrlSetupModal === 'function') {
+              openUrlSetupModal();
+            } else if (typeof UrlSetupModule !== 'undefined') {
+              UrlSetupModule.open();
+            }
+          });
+          LazyBindingSystem.register('update-sheet-btn', 'onclick', updateGoogleSheet);
+          LazyBindingSystem.register('export-btn', 'onclick', exportToJSON);
+          LazyBindingSystem.register('import-btn', 'onclick', () => {
+            const importFile = document.getElementById('import-file');
+            if (importFile) importFile.click();
+          });
+          LazyBindingSystem.register('import-file', 'change', importFromJSON);
+          console.log('📝 메인 UI 지연 바인딩 등록 완료');
+        }
+        return;
+      }
+
+      // el 객체가 있으면 기존 방식대로
       el.loadHandBtn.onclick = openLoadHandModal;
       el.refreshDataBtn.onclick = () => executeWithLock(loadInitial, '데이터 새로고침', '최신 데이터를 불러오고 있습니다...');
       el.resetBtn.onclick = () => executeWithLock(resetApp, '앱 리셋', '앱을 초기화하고 있습니다...');
 
-      // URL 설정 버튼 (v3.5.29)
-      el.setUrlBtn.onclick = () => openUrlSetupModal();
+      // URL 설정 버튼 (v3.5.31)
+      el.setUrlBtn.onclick = () => {
+        if (typeof openUrlSetupModal === 'function') {
+          openUrlSetupModal();
+        } else if (typeof UrlSetupModule !== 'undefined') {
+          UrlSetupModule.open();
+        }
+      };
 
       // CAM 버튼 이벤트 리스너 완전 제거 (v3.5.27)
       // 모든 카메라 관련 이벤트 및 요소 제거됨

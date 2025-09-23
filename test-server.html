@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>서버 테스트</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 20px;
+      background: #1a1a1a;
+      color: white;
+    }
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 6px;
+    }
+    .online { background: #10b981; }
+    .offline { background: #ef4444; }
+    .checking { background: #3b82f6; }
+  </style>
+</head>
+<body>
+  <h1>🔍 서버 상태 체크</h1>
+
+  <div id="python-status" class="status checking">Python 서버 (8000): 확인 중...</div>
+  <div id="node-status" class="status checking">Node.js 서버 (8080): 확인 중...</div>
+  <div id="file-status" class="status checking">파일 프로토콜: 확인 중...</div>
+
+  <h2>테스트 페이지</h2>
+  <ul>
+    <li><a href="http://localhost:8000/index.html">Python 서버 - index.html</a></li>
+    <li><a href="http://localhost:8080/index.html">Node.js 서버 - index.html</a></li>
+    <li><a href="http://localhost:8000/index-minimal.html">최소 버전 (8000)</a></li>
+    <li><a href="http://localhost:8080/index-minimal.html">최소 버전 (8080)</a></li>
+  </ul>
+
+  <script>
+    // Python 서버 체크
+    fetch('http://localhost:8000/')
+      .then(() => {
+        document.getElementById('python-status').className = 'status online';
+        document.getElementById('python-status').textContent = '✅ Python 서버 (8000): 온라인';
+      })
+      .catch(() => {
+        document.getElementById('python-status').className = 'status offline';
+        document.getElementById('python-status').textContent = '❌ Python 서버 (8000): 오프라인';
+      });
+
+    // Node.js 서버 체크
+    fetch('http://localhost:8080/')
+      .then(() => {
+        document.getElementById('node-status').className = 'status online';
+        document.getElementById('node-status').textContent = '✅ Node.js 서버 (8080): 온라인';
+      })
+      .catch(() => {
+        document.getElementById('node-status').className = 'status offline';
+        document.getElementById('node-status').textContent = '❌ Node.js 서버 (8080): 오프라인';
+      });
+
+    // 파일 프로토콜 체크
+    if (window.location.protocol === 'file:') {
+      document.getElementById('file-status').textContent = '⚠️ file:// 프로토콜 사용 중 - CORS 에러 가능';
+      document.getElementById('file-status').className = 'status offline';
+    } else {
+      document.getElementById('file-status').textContent = '✅ ' + window.location.protocol + ' 프로토콜 사용 중';
+      document.getElementById('file-status').className = 'status online';
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>디버그 페이지</title>
+  <script>
+    // 에러 캐처
+    window.addEventListener('error', function(e) {
+      document.body.innerHTML += `<div style="color:red">에러: ${e.message} (${e.filename}:${e.lineno})</div>`;
+    });
+  </script>
+</head>
+<body>
+  <h1>index.html 로드 테스트</h1>
+  <iframe src="index.html" width="100%" height="500" style="border:1px solid black"></iframe>
+
+  <h2>콘솔 로그</h2>
+  <div id="console" style="background:black;color:lime;padding:10px;font-family:monospace;"></div>
+
+  <script>
+    // 콘솔 로그 캡처
+    const log = console.log;
+    const error = console.error;
+    const warn = console.warn;
+
+    console.log = function(...args) {
+      document.getElementById('console').innerHTML += `<div>[LOG] ${args.join(' ')}</div>`;
+      log.apply(console, args);
+    };
+
+    console.error = function(...args) {
+      document.getElementById('console').innerHTML += `<div style="color:red">[ERROR] ${args.join(' ')}</div>`;
+      error.apply(console, args);
+    };
+
+    console.warn = function(...args) {
+      document.getElementById('console').innerHTML += `<div style="color:yellow">[WARN] ${args.join(' ')}</div>`;
+      warn.apply(console, args);
+    };
+  </script>
+</body>
+</html>

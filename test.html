@@ -2,10 +2,10 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>포커 로거 테스트 v3.5.28</title>
+  <title>포커 로거 테스트 v3.5.31</title>
 </head>
 <body>
-  <h1>포커 핸드 로거 v3.5.28 테스트</h1>
+  <h1>포커 핸드 로거 v3.5.31 테스트</h1>
   <div id="test-results" style="font-family: monospace; white-space: pre;"></div>
 
   <script>
@@ -27,7 +27,7 @@
     }
 
     // 테스트 시작
-    results.textContent = '=== v3.5.28 테스트 시작 ===\n\n';
+    results.textContent = '=== v3.5.31 테스트 시작 ===\n\n';
 
     // 1. ActionOrderManager 초기화 테스트
     test('ActionOrderManager 클래스가 정의되어 있어야 함', () => {
@@ -74,7 +74,7 @@
             results.textContent += `성공률: ${(passCount/testCount*100).toFixed(1)}%\n`;
 
             if (failCount === 0) {
-              results.textContent += '\n✨ 모든 테스트 통과! v3.5.28 안정적입니다.\n';
+              results.textContent += '\n✨ 모든 테스트 통과! v3.5.31 안정적입니다.\n';
             } else {
               results.textContent += '\n⚠️ 일부 테스트 실패. 추가 수정이 필요합니다.\n';
             }

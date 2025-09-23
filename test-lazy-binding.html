@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>지연 바인딩 테스트 v3.5.31</title>
+</head>
+<body>
+  <h1>지연 바인딩 시스템 테스트 v3.5.31</h1>
+
+  <!-- 테스트 버튼들 (일부는 나중에 동적으로 생성) -->
+  <div id="test-buttons">
+    <button id="btn-1">버튼 1 (즉시 존재)</button>
+    <!-- btn-2는 1초 후 생성 -->
+    <!-- btn-3는 2초 후 생성 -->
+  </div>
+
+  <div id="test-results" style="font-family: monospace; white-space: pre;"></div>
+
+  <script>
+    const results = document.getElementById('test-results');
+    const log = (msg) => {
+      results.textContent += `${new Date().toLocaleTimeString()} - ${msg}\n`;
+    };
+
+    log('=== 지연 바인딩 테스트 시작 ===\n');
+
+    // LazyBindingSystem 시뮬레이션
+    const LazyBindingSystem = {
+      bindings: [],
+      retryCount: 0,
+      maxRetries: 10,
+      retryDelay: 500,
+
+      register(elementId, event, handler) {
+        this.bindings.push({
+          elementId,
+          event,
+          handler,
+          bound: false
+        });
+        log(`등록: ${elementId}`);
+      },
+
+      tryBind(binding) {
+        const element = document.getElementById(binding.elementId);
+        if (element) {
+          if (binding.event === 'onclick') {
+            element.onclick = binding.handler;
+          } else {
+            element.addEventListener(binding.event, binding.handler);
+          }
+          binding.bound = true;
+          log(`✅ 바인딩 성공: ${binding.elementId}`);
+          return true;
+        }
+        return false;
+      },
+
+      bindAll() {
+        let unboundCount = 0;
+        this.bindings.forEach(binding => {
+          if (!binding.bound) {
+            if (!this.tryBind(binding)) {
+              unboundCount++;
+            }
+          }
+        });
+
+        if (unboundCount > 0 && this.retryCount < this.maxRetries) {
+          this.retryCount++;
+          log(`⏳ 재시도 ${this.retryCount}/${this.maxRetries}: ${unboundCount}개 대기중`);
+          setTimeout(() => this.bindAll(), this.retryDelay);
+        } else if (unboundCount === 0) {
+          log('✨ 모든 바인딩 완료!');
+        } else {
+          log(`⚠️ ${unboundCount}개 바인딩 실패`);
+        }
+      },
+
+      init() {
+        log('🔄 지연 바인딩 시스템 초기화');
+        setTimeout(() => this.bindAll(), 100);
+      }
+    };
+
+    // 테스트: 3개 버튼 이벤트 등록 (일부는 아직 존재하지 않음)
+    LazyBindingSystem.register('btn-1', 'onclick', () => log('🎯 버튼 1 클릭!'));
+    LazyBindingSystem.register('btn-2', 'onclick', () => log('🎯 버튼 2 클릭!'));
+    LazyBindingSystem.register('btn-3', 'onclick', () => log('🎯 버튼 3 클릭!'));
+
+    // 초기화
+    LazyBindingSystem.init();
+
+    // 버튼 동적 생성
+    setTimeout(() => {
+      const btn2 = document.createElement('button');
+      btn2.id = 'btn-2';
+      btn2.textContent = '버튼 2 (1초 후 생성)';
+      document.getElementById('test-buttons').appendChild(btn2);
+      log('📌 버튼 2 생성됨');
+    }, 1000);
+
+    setTimeout(() => {
+      const btn3 = document.createElement('button');
+      btn3.id = 'btn-3';
+      btn3.textContent = '버튼 3 (2초 후 생성)';
+      document.getElementById('test-buttons').appendChild(btn3);
+      log('📌 버튼 3 생성됨');
+    }, 2000);
+
+    // 최종 테스트 결과
+    setTimeout(() => {
+      log('\n=== 테스트 결과 ===');
+      const successCount = LazyBindingSystem.bindings.filter(b => b.bound).length;
+      const totalCount = LazyBindingSystem.bindings.length;
+
+      if (successCount === totalCount) {
+        log(`✅ 성공: ${successCount}/${totalCount} 바인딩 완료`);
+        log('🎉 지연 바인딩 시스템이 정상 작동합니다!');
+      } else {
+        log(`⚠️ 실패: ${successCount}/${totalCount} 바인딩만 완료`);
+      }
+
+      log('\n버튼을 클릭하여 이벤트가 제대로 바인딩되었는지 확인하세요.');
+    }, 6000);
+  </script>
+</body>
+</html>
