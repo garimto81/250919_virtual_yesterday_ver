@@ -6,26 +6,42 @@
 
 ---
 
-## 🔴 **현재 발생 오류 및 해결 방안 (2차 시도)**
+## 🔴 **현재 발생 오류 및 해결 방안 (3차 시도)**
 
-### **1차 해결 실패 원인 분석**
-- Config 시트 접근 시 CORS 정책으로 차단됨
-- `APPS_SCRIPT_URL` 변수가 초기화되기 전에 참조됨
-- 비동기 로드로 인한 타이밍 문제 발생
-
-### **2차 해결 방안 (구현 완료)**
-
-#### **1. 변수 초기화 문제 해결 ✅**
+### **2차 해결 실패 원인 분석**
 ```javascript
-// 이전 (문제): let APPS_SCRIPT_URL = null;
-// 수정: 즉시 사용 가능한 기본값 설정
-let APPS_SCRIPT_URL = localStorage.getItem('appsScriptUrl') || DEFAULT_URL;
+// Line 1384 오류
+Uncaught (in promise) ReferenceError: Cannot access 'APPS_SCRIPT_URL' before initialization
+```
+
+**문제점:**
+- `APPS_SCRIPT_URL` 변수가 DOMContentLoaded 이벤트 핸들러 **안에서** 선언됨
+- 핸들러 내부에서 변수 사용 시 아직 초기화되지 않은 상태
+- 변수 스코프 문제로 인한 참조 오류
+
+### **3차 해결 방안 (구현 완료)**
+
+#### **1. 변수 스코프 문제 해결 ✅**
+```javascript
+// 이전 (문제): DOMContentLoaded 내부에 변수 선언
+document.addEventListener('DOMContentLoaded', () => {
+  let APPS_SCRIPT_URL = null; // ❌ 여기서 선언
+  if (APPS_SCRIPT_URL) {...} // ❌ 초기화 전 참조
+});
+
+// 수정: 전역 스코프로 이동
+let APPS_SCRIPT_URL = null; // ✅ 전역 변수로 선언
+initializeAppsScriptUrl(); // ✅ 즉시 초기화
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (APPS_SCRIPT_URL) {...} // ✅ 이미 초기화된 변수 참조
+});
 ```
 
 **상태:**
-- [x] `APPS_SCRIPT_URL` undefined 오류 해결
-- [x] localStorage 우선 참조로 안정성 확보
-- [x] 기본 URL 폴백 메커니즘 구현
+- [x] 변수 스코프 문제 해결
+- [x] 전역 변수로 선언하여 모든 함수에서 접근 가능
+- [x] DOMContentLoaded 전에 초기화 완료
 
 #### **2. CORS 오류 우회 전략 ✅**
 ```javascript

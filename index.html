@@ -1379,36 +1379,12 @@
     console.log.apply(console, [`[${APP_VERSION}] NOTICE:`, ...args]);
   };
   
-  document.addEventListener('DOMContentLoaded', async () => {
-    // Apps Script URL 확인 및 Config 시트 로드 (선택)
-    if (APPS_SCRIPT_URL) {
-      console.log('🔄 현재 Apps Script URL:', APPS_SCRIPT_URL);
-      await loadAppsScriptUrlFromConfig();
-    } else {
-      console.warn('⚠️ Apps Script URL이 설정되지 않았습니다.');
-      console.warn('→ 관리 > 설정에서 URL을 입력해주세요.');
-    }
+  // ====== CONFIG v71.0.6 ULTIMATE ======
+  // Apps Script URL 관리 - 전역 변수로 선언
+  let APPS_SCRIPT_URL = null;
 
-    // 버전 표시 업데이트
-    updateAllVersionDisplays();
-
-    console.log(`%c🚀 앱 초기화 시작 - ${VERSION_INFO}`, 'color: #10b981; font-weight: bold');
-    console.log('Initialized at', new Date().toISOString());
-    
-    // 칩 분석 모듈 초기화는 state 객체 생성 후에 진행
-    
-    // 화면에 버전 표시 업데이트
-    const versionDisplay = document.getElementById('version-display');
-    if(versionDisplay) {
-      versionDisplay.textContent = `${APP_VERSION} (${VERSION_DATE})`;
-    }
-    
-    // ====== CONFIG v71.0.6 ULTIMATE ======
-    // Apps Script URL 관리 - localStorage 우선
-    let APPS_SCRIPT_URL = null;
-
-    // 초기 URL 로드 (localStorage 우선)
-    function initializeAppsScriptUrl() {
+  // 초기 URL 로드 (localStorage 우선)
+  function initializeAppsScriptUrl() {
       const cachedUrl = localStorage.getItem('appsScriptUrl');
 
       if (cachedUrl) {
@@ -1428,11 +1404,11 @@
       return null;
     }
 
-    // 즉시 초기화 실행
-    initializeAppsScriptUrl();
+  // 즉시 초기화 실행
+  initializeAppsScriptUrl();
 
-    // Config 시트에서 URL 가져오기 (옵션 - URL이 있을 때만 시도)
-    async function loadAppsScriptUrlFromConfig() {
+  // Config 시트에서 URL 가져오기 (옵션 - URL이 있을 때만 시도)
+  async function loadAppsScriptUrlFromConfig() {
       // URL이 없으면 시도하지 않음
       if (!APPS_SCRIPT_URL) {
         console.log('🔍 Config 시트 로드 건너뜀 (URL 미설정)');
@@ -1464,6 +1440,30 @@
       }
 
       return APPS_SCRIPT_URL;
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    // Apps Script URL 확인 및 Config 시트 로드 (선택)
+    if (APPS_SCRIPT_URL) {
+      console.log('🔄 현재 Apps Script URL:', APPS_SCRIPT_URL);
+      await loadAppsScriptUrlFromConfig();
+    } else {
+      console.warn('⚠️ Apps Script URL이 설정되지 않았습니다.');
+      console.warn('→ 관리 > 설정에서 URL을 입력해주세요.');
+    }
+
+    // 버전 표시 업데이트
+    updateAllVersionDisplays();
+
+    console.log(`%c🚀 앱 초기화 시작 - ${VERSION_INFO}`, 'color: #10b981; font-weight: bold');
+    console.log('Initialized at', new Date().toISOString());
+
+    // 칩 분석 모듈 초기화는 state 객체 생성 후에 진행
+
+    // 화면에 버전 표시 업데이트
+    const versionDisplay = document.getElementById('version-display');
+    if(versionDisplay) {
+      versionDisplay.textContent = `${APP_VERSION} (${VERSION_DATE})`;
     }
 
     // v70 구조 강제 적용을 위한 localStorage 초기화
