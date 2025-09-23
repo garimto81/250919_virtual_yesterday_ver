@@ -5922,29 +5922,29 @@ async function sendDataToGoogleSheet(){
                   currentUrlSpan.textContent = newUrl;
                   currentUrlSpan.className = 'text-xs text-green-400 break-all font-mono';
                 }
+
+                showUrlStatus('✅ URL이 성공적으로 저장되었습니다!', true);
+                showFeedback('✅ Apps Script URL이 저장되었습니다');
+
+                // 입력 필드 초기화 및 플레이스홀더 업데이트
+                urlInput.value = '';
+                urlInput.placeholder = '저장 완료! 다른 URL을 입력하려면 여기에 입력하세요';
+
+                // 저장 버튼 임시 비활성화 및 텍스트 변경
+                saveUrlBtn.disabled = true;
+                saveUrlBtn.textContent = '✅ 저장 완료';
+                saveUrlBtn.className = 'w-full bg-green-600 py-1.5 rounded text-sm font-medium';
+
+                setTimeout(() => {
+                  saveUrlBtn.disabled = false;
+                  saveUrlBtn.textContent = '💾 새 URL 저장';
+                  saveUrlBtn.className = 'w-full bg-amber-600 hover:bg-amber-700 py-1.5 rounded text-sm font-medium';
+                }, 2000);
+              } else {
+                showUrlStatus('❌ 올바른 URL 형식이 아닙니다', false);
+                showFeedback('❌ 올바른 URL 형식이 아닙니다', true);
               }
             });
-              showUrlStatus('✅ URL이 성공적으로 저장되었습니다!', true);
-              showFeedback('✅ Apps Script URL이 저장되었습니다');
-
-              // 입력 필드 초기화 및 플레이스홀더 업데이트
-              urlInput.value = '';
-              urlInput.placeholder = '저장 완료! 다른 URL을 입력하려면 여기에 입력하세요';
-
-              // 저장 버튼 임시 비활성화 및 텍스트 변경
-              saveUrlBtn.disabled = true;
-              saveUrlBtn.textContent = '✅ 저장 완료';
-              saveUrlBtn.className = 'w-full bg-green-600 py-1.5 rounded text-sm font-medium';
-
-              setTimeout(() => {
-                saveUrlBtn.disabled = false;
-                saveUrlBtn.textContent = '💾 새 URL 저장';
-                saveUrlBtn.className = 'w-full bg-amber-600 hover:bg-amber-700 py-1.5 rounded text-sm font-medium';
-              }, 2000);
-            } else {
-              showUrlStatus('❌ 올바른 URL 형식이 아닙니다', false);
-              showFeedback('❌ 올바른 URL 형식이 아닙니다', true);
-            }
           } else if (!newUrl) {
             showUrlStatus('⚠️ URL을 입력해주세요', false);
             showFeedback('URL을 입력해주세요', true);
