@@ -228,11 +228,16 @@ class PerformanceOptimizer {
   }
 
   cleanupDetachedNodes() {
+    // document.body가 없으면 종료
+    if (!document.body) {
+      return;
+    }
+
     // 분리된 DOM 노드 찾아서 제거
     const allNodes = document.querySelectorAll('*');
     allNodes.forEach(node => {
-      // null 체크 추가 - parentNode가 null일 수 있음
-      if (node && node.parentNode && !document.body.contains(node)) {
+      // null 체크 추가 - parentNode와 body가 모두 존재해야 함
+      if (node && node.parentNode && document.body && !document.body.contains(node)) {
         try {
           node.parentNode.removeChild(node);
         } catch (e) {

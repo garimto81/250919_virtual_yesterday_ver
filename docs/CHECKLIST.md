@@ -1,6 +1,6 @@
 # 🎰 Virtual Data - Poker Hand Logger 체크리스트
 
-> **버전**: v3.5.27 (Apps Script v71.0.4)
+> **버전**: v3.5.28 (Apps Script v71.0.4)
 > **최종 업데이트**: 2025-09-23
 > **목적**: 포커 핸드 로거 애플리케이션의 기능 테스트 및 검증
 
@@ -8,7 +8,7 @@
 
 ## 🚨 **실패 이력 요약 (반드시 유지)**
 
-### **최종 성공: 5차 시도 후 해결**
+### **현재 상태: 6차 시도**
 
 | 차수 | 실패 원인 | 시도한 해결책 | 결과 |
 |------|----------|--------------|------|
@@ -16,21 +16,32 @@
 | **2차** | `APPS_SCRIPT_URL` undefined 참조 오류 | localStorage 우선, 기본 URL 설정 | ❌ 변수 스코프 문제 |
 | **3차** | DOMContentLoaded 내부에 변수 선언<br>Line 1384 초기화 전 참조 | 전역 변수로 이동 | ❌ DEFAULT_APPS_SCRIPT_URL 미정의 |
 | **4차** | DEFAULT_APPS_SCRIPT_URL 미정의<br>Line 5891 참조 오류 | 참조 제거, URL 존재 여부로 판단 | ❌ 캐시 미갱신 |
-| **5차** | 브라우저 캐시 문제<br>CAM 로직 잔재<br>addEventListener 오류 | 1. 버전 쿼리 파라미터 (v3.5.25)<br>2. CAM 부분 제거 (v3.5.26)<br>3. CAM 완전 제거 (v3.5.27) | ✅ **최종 해결** |
+| **5차** | 브라우저 캐시 문제<br>CAM 로직 잔재<br>addEventListener 오류 | 1. 버전 쿼리 파라미터 (v3.5.25)<br>2. CAM 부분 제거 (v3.5.26)<br>3. CAM 완전 제거 (v3.5.27) | ✅ 해결 |
+| **6차** | 시트 전송 실패<br>performance-optimizer 오류 | 1. APPS_SCRIPT_URL 기본값 설정<br>2. null 체크 추가 (v3.5.28) | ✅ 해결 |
 
 ---
 
-## 🎆 **최종 성공 - 모든 문제 해결 완료**
+## 🔄 **6차 시도 - 추가 문제 해결**
 
-### **성공 확인 (v3.5.27)**
+### **6차 문제 및 해결 (v3.5.28)**
 
-#### **작동 확인 사항:**
-- ✅ 패트 계산 정상 작동 ("🍺 === 새로운 팟 계산 시작 [v3.5.27] ===")
-- ✅ PLAYER 행 생성 정상 ("=== PLAYER 행 생성 [v3.5.27] ===")
-- ✅ 데이터 처리 정상 (플레이어 2명 처리 완료)
-- ✅ CAM 관련 로깅 완전 제거 ("📦 Index 메타데이터 빌드 완료")
-- ✅ addEventListener 오류 해결
-- ✅ UI 잠금/해제 정상 작동
+#### **발견된 문제:**
+1. **시트 전송 실패**
+   - "⚠️ 시트 전송 확인 필요" 메시지
+   - APPS_SCRIPT_URL이 null로 초기화되어 전송 불가
+
+2. **performance-optimizer.js 오류**
+   - `Cannot read properties of null (reading 'contains')`
+   - document.body가 null일 때 cleanupDetachedNodes 실패
+
+#### **해결 내용 (v3.5.28):**
+1. **APPS_SCRIPT_URL 기본값 설정**
+   - localStorage에 URL이 없을 때 기본 URL 사용
+   - 사용자가 자신의 URL로 변경하도록 안내
+
+2. **performance-optimizer.js null 체크 추가**
+   - document.body 존재 여부 확인
+   - null일 경우 cleanupDetachedNodes 종료
 
 ### **해결된 문제들 (v3.5.27)**
 

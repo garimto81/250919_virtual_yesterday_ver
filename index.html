@@ -778,7 +778,7 @@
   // ========================================
   // 중앙 버전 관리 시스템
   // ========================================
-  const APP_VERSION = 'v3.5.27';
+  const APP_VERSION = 'v3.5.28';
   const VERSION_DATE = '2025-09-22';
   const VERSION_INFO = `포커 핸드 로거 ${APP_VERSION} (${VERSION_DATE})`;
 
@@ -1403,15 +1403,17 @@
         return cachedUrl;
       }
 
-      // localStorage에 URL이 없으면 사용자에게 알림
+      // localStorage에 URL이 없으면 기본 URL 사용
+      const defaultUrl = 'https://script.google.com/macros/s/AKfycbxyqcPMr0Ba5dK0XSwaTcbl9y_02BbLdzvPybmMRmHubwlCkUAAP0rglwTNBMa2yZcG/exec';
       console.warn('⚠️ Apps Script URL이 설정되지 않았습니다.');
-      console.warn('💡 해결방법:');
-      console.warn('1. 관리 버튼 → 설정 탭에서 Apps Script URL 입력');
+      console.warn('📌 기본 URL을 사용합니다:', defaultUrl);
+      console.warn('💡 자신의 Apps Script URL로 변경하려면:');
+      console.warn('1. 관리 버튼 → 설정 탭에서 URL 입력');
       console.warn('2. 또는 Google Sheets의 Config 시트 A1에 URL 입력');
 
-      // URL이 없어도 앱은 실행 (읽기 전용 모드)
-      APPS_SCRIPT_URL = null;
-      return null;
+      // 기본 URL 설정 (v3.5.28)
+      APPS_SCRIPT_URL = defaultUrl;
+      return defaultUrl;
     }
 
   // 즉시 초기화 실행
