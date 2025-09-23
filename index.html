@@ -2,10 +2,18 @@
 <!--
   ============================================
   포커 핸드 로거 (Poker Hand Logger)
-  Version: 3.5.16
-  Last Modified: 2025-09-22 KST
+  Version: 3.5.27
+  Last Modified: 2025-09-23 KST
 
   Change Log:
+  - v3.5.27 (2025-09-23): CAM 기능 완전 제거
+    • 모든 카메라 관련 UI 요소 제거 (cam-btn-1, cam-btn-2, camera-view)
+    • window.state.camNumbers, camPreset 변수 제거
+    • computeCamPrefill, getCamNumber 함수 더미화
+    • 새 핸드 시작 시 카메라 번호 증가 로직 제거
+    • 키패드 모달에서 CAM 처리 로직 비활성화
+    • Index CSV 빌드 시 CAM 필드 비활성화
+    • loadIndexRow 함수에서 카메라 정보 로드 로직 제거
   - v3.5.16 (2025-09-22): 메모리 관리 최적화 및 성능 개선
     • 메모리 임계값 20MB → 30MB로 상향 조정
     • 메모리 체크 주기 5초 → 30초로 변경하여 성능 개선
@@ -151,7 +159,7 @@
   <meta http-equiv="cache-control" content="no-cache, must-revalidate, max-age=0" />
   <meta http-equiv="pragma" content="no-cache" />
   <meta http-equiv="expires" content="0" />
-  <title>포커 핸드 로거 v3.5.24</title>
+  <title>포커 핸드 로거 v3.5.27</title>
   <script src="https://cdn-tailwindcss.vercel.app/"></script>
   <script src="archive/chip-analysis-module.js?v=3.5.25" defer></script>
   <!-- 테이블 관리 모듈 v59 - IN/OUT 두 가지 상태만 사용 -->
@@ -325,8 +333,9 @@
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div class="text-xs text-gray-300 flex items-center gap-2">
-            <button id="cam-btn-1" class="btn bg-gray-700 px-2 py-1 rounded"></button>
-            <button id="cam-btn-2" class="btn bg-gray-700 px-2 py-1 rounded"></button>
+            <!-- CAM 버튼 제거됨 (v3.5.27) -->
+            <!-- <button id="cam-btn-1" class="btn bg-gray-700 px-2 py-1 rounded"></button> -->
+            <!-- <button id="cam-btn-2" class="btn bg-gray-700 px-2 py-1 rounded"></button> -->
           </div>
           <div class="text-right text-xs text-gray-400">
             <span id="data-stamp"></span>
@@ -549,10 +558,11 @@
         <div id="chip-option-select" class="mb-4">
           <p class="text-sm text-gray-300 mb-3">칩 사진을 추가하는 방법을 선택하세요:</p>
           <div class="grid grid-cols-2 gap-2">
-            <button id="select-camera-btn" class="bg-blue-600 hover:bg-blue-700 p-3 rounded-lg flex flex-col items-center">
+            <!-- 카메라 기능 제거됨 (v3.5.27) -->
+            <!-- <button id="select-camera-btn" class="bg-blue-600 hover:bg-blue-700 p-3 rounded-lg flex flex-col items-center">
               <span class="text-2xl mb-1">📷</span>
               <span class="text-sm">사진 촬영</span>
-            </button>
+            </button> -->
             <button id="select-file-btn" class="bg-purple-600 hover:bg-purple-700 p-3 rounded-lg flex flex-col items-center">
               <span class="text-2xl mb-1">📁</span>
               <span class="text-sm">파일 선택</span>
@@ -560,10 +570,10 @@
           </div>
         </div>
         
-        <!-- 카메라 뷰 (숨김 상태) -->
-        <div id="camera-view" class="hidden">
+        <!-- 카메라 뷰 제거됨 (v3.5.27) -->
+        <!-- <div id="camera-view" class="hidden">
           <video id="chip-video" class="w-full rounded-lg mb-3" autoplay playsinline></video>
-          <canvas id="chip-canvas" class="hidden"></canvas>
+          <canvas id="chip-canvas" class="hidden"></canvas> -->
         </div>
         
         <!-- 이미지 프리뷰 (숨김 상태) -->
@@ -768,7 +778,7 @@
   // ========================================
   // 중앙 버전 관리 시스템
   // ========================================
-  const APP_VERSION = 'v3.5.26';
+  const APP_VERSION = 'v3.5.27';
   const VERSION_DATE = '2025-09-22';
   const VERSION_INFO = `포커 핸드 로거 ${APP_VERSION} (${VERSION_DATE})`;
 
@@ -1843,9 +1853,8 @@
     let timeUpdater;
     window.state = {
       currentStreet: 'preflop',  // 현재 진행 중인 스트리트
-      // CAM 관련 변수 제거 (v3.5.26)
-      // camNumbers: { cam1no:'', cam2no:'' }, // 제거됨
-      // camPreset: { cam1:'', cam2:'' }, // 제거됨
+      // CAM 관련 변수 완전 제거 (v3.5.27)
+      // camNumbers, camPreset 모든 참조 제거됨
 
       playerDataByTable: {},     // { [table]: [{name, chips, notable}] }
       allTables: [],
@@ -1930,9 +1939,8 @@
       timeDisplay: document.getElementById('time-display'),
       managePlayersBtn: document.getElementById('manage-players-btn'),
       registrationModal: document.getElementById('registration-modal'),
-      // CAM 버튼 제거 (v3.5.26)
-      // cam1: document.getElementById('cam-btn-1'),
-      // cam2: document.getElementById('cam-btn-2'),
+      // CAM 버튼 완전 제거 (v3.5.27)
+      // cam1, cam2 요소 및 모든 참조 제거됨
       dataStamp: document.getElementById('data-stamp'),
       // 설정 모달 관련
       settingsBtn: document.getElementById('settings-btn'),
@@ -3980,20 +3988,21 @@
         return;
       }
 
-      // CAM 관련 초기화 코드 제거 (v3.5.26)
-      console.log(`📹 CAM 기능이 비활성화되었습니다`);
+      // CAM 관련 초기화 코드 완전 제거 (v3.5.27)
+      // console.log(`📹 CAM 기능이 비활성화되었습니다`); // 제거됨
 
       const byTable={};
       console.log('[v3.5.5] 📊 첫 번째 행 (헤더):', rows[0]);
 
-      // 구조 판별: 첫 행이 "Camera Preset"으로 시작하면 기존 구조
-      const isOldFormat = rows[0] && String(rows[0][0]).includes('Camera');
+      // 구조 판별: CAM 관련 검사 제거 (v3.5.27)
+      // const isOldFormat = rows[0] && String(rows[0][0]).includes('Camera'); // 제거됨
+      const isOldFormat = false; // CAM 구조 비활성화
 
       if(isOldFormat) {
         console.log('[v3.5.5] 🔄 기존 Type 시트 구조 감지 - 폴백 모드 사용');
 
         // 기존 구조로 파싱
-        // A:Camera Preset, B:Player, C:Table, D:Notable, E:Chips, F:updatedAt, G:Seat, H:Status
+        // 기존 구조 (CAM 관련 제거됨): A:Camera Preset, B:Player, C:Table, D:Notable, E:Chips, F:updatedAt, G:Seat, H:Status
         for(let i=1;i<rows.length;i++){
           const r=rows[i]||[];
           const player = String(r[1]||'').trim();
@@ -4083,7 +4092,7 @@
 
     function buildIndexFromCsv(rows){
       // Index CSV columns:
-      // A handNumber | B startRow | C endRow | D handUpdatedAt | E handEdit | F handEditTime | G label | H table | I tableUpdatedAt | J Cam | K CamFile01name | L CamFile01number | M CamFile02name | N CamFile02number
+      // A handNumber | B startRow | C endRow | D handUpdatedAt | E handEdit | F handEditTime | G label | H table | I tableUpdatedAt | [CAM 필드 J-N 제거됨]
       // O lastStreet | P lastAction | Q workStatus (새로운 열들)
       const out=[]; for(let i=1;i<rows.length;i++){
         const r=rows[i]||[];
@@ -4091,8 +4100,8 @@
           handNumber:String(r[0]||''), startRow:+(r[1]||0), endRow:+(r[2]||0),
           handUpdatedAt:String(r[3]||''), handEdit:r[4], handEditTime:r[5], label:r[6],
           table:String(r[7]||''), tableUpdatedAt:r[8],
-          // CAM 관련 필드 무시 (v3.5.26)
-          cam:r[9], cam1:r[10], cam1no:r[11], cam2:r[12], cam2no:r[13],
+          // CAM 관련 필드 완전 제거 (v3.5.27)
+          // cam:r[9], cam1:r[10], cam1no:r[11], cam2:r[12], cam2no:r[13], // 제거됨
           lastStreet:String(r[14]||''), lastAction:String(r[15]||''), workStatus:String(r[16]||'')  // 새로운 열들
         };
         if(item.handNumber) out.push(item);
@@ -4250,43 +4259,15 @@
             return numB - numA;
           });
           
-          // 카메라 번호가 있는 가장 최근 핸드 찾기
-          let maxCam1 = 0, maxCam2 = 0;
-          let foundInHand = null;
-          
-          for(const row of sortedRows) {
-            const cam1Num = parseInt(row.cam1no, 10) || 0;
-            const cam2Num = parseInt(row.cam2no, 10) || 0;
-            
-            if(cam1Num > maxCam1) {
-              maxCam1 = cam1Num;
-              if(!foundInHand) foundInHand = row.handNumber;
-            }
-            if(cam2Num > maxCam2) {
-              maxCam2 = cam2Num;
-              if(!foundInHand) foundInHand = row.handNumber;
-            }
-          }
-          
-          if(foundInHand) {
-            logMessage(`📍 핸드 #${foundInHand}에서 카메라 번호 발견`);
-          }
-          
-          if(maxCam1 > 0) {
-            localStorage.setItem('pokerHandLogger_lastCam1', String(maxCam1));
-            logMessage(`✅ ${window.state.camPreset.cam1} 마지막 번호: ${maxCam1} → 다음 번호: ${pad4(maxCam1 + 1)}`);
-          } else {
-            logMessage(`⚠️ ${window.state.camPreset.cam1} 번호 데이터 없음 → 0001부터 시작`);
-          }
-          
-          if(maxCam2 > 0) {
-            localStorage.setItem('pokerHandLogger_lastCam2', String(maxCam2));
-            logMessage(`✅ ${window.state.camPreset.cam2} 마지막 번호: ${maxCam2} → 다음 번호: ${pad4(maxCam2 + 1)}`);
-          } else {
-            logMessage(`⚠️ ${window.state.camPreset.cam2} 번호 데이터 없음 → 0001부터 시작`);
-          }
+          // 카메라 번호 처리 로직 제거 (v3.5.27)
+          /* 제거된 코드:
+          - 카메라 번호 추출 로직
+          - localStorage에 카메라 번호 저장
+          - cam1, cam2 번호 처리
+          - window.state.camPreset 참조
+          */
         } else {
-          logMessage('⚠️ Index 데이터가 비어있음 → 카메라 번호 0001부터 시작');
+          // logMessage('⚠️ Index 데이터가 비어있음 → 카메라 번호 0001부터 시작'); // CAM 제거됨 (v3.5.27)
         }
         
         renderAll();
@@ -4435,57 +4416,15 @@
         console.log('📋 Index 행 데이터:', indexRow);
         
         if(indexRow) {
-          // 카메라 정보 로드 및 로깅
-          if(indexRow.cam1 || indexRow.cam1no) {
-            console.log(`📷 카메라1 정보 발견:`);
-            console.log(`   - 이름: ${indexRow.cam1 || '없음'}`);
-            console.log(`   - 번호: ${indexRow.cam1no || '없음'}`);
-            
-            // 카메라1 정보 업데이트
-            if(indexRow.cam1) {
-              window.state.camPreset.cam1 = indexRow.cam1;
-              console.log(`📷 카메라1 프리셋 업데이트: ${indexRow.cam1}`);
-            }
-            if(indexRow.cam1no) {
-              // 긴 번호 감지 및 수정 (예: 1111111111110205 → 205)
-              let cam1Value = String(indexRow.cam1no);
-              if (cam1Value.length > 4) {
-                cam1Value = cam1Value.slice(-4); // 마지막 4자리만
-                console.warn(`⚠️ cam1no 정제: ${indexRow.cam1no} → ${cam1Value}`);
-              }
-              const cam1Num = parseInt(cam1Value, 10) || 0;
-              window.state.camNumbers.cam1no = String(cam1Num);
-              el.cam1.textContent = window.state.camPreset.cam1 + pad4(cam1Num);
-            }
-          }
-          
-          if(indexRow.cam2 || indexRow.cam2no) {
-            console.log(`📷 카메라2 정보 발견:`);
-            console.log(`   - 이름: ${indexRow.cam2 || '없음'}`);
-            console.log(`   - 번호: ${indexRow.cam2no || '없음'}`);
-            
-            // 카메라2 정보 업데이트
-            if(indexRow.cam2) {
-              window.state.camPreset.cam2 = indexRow.cam2;
-              console.log(`📷 카메라2 프리셋 업데이트: ${indexRow.cam2}`);
-            }
-            if(indexRow.cam2no) {
-              // 긴 번호 감지 및 수정 (예: 2222222222220206 → 206)
-              let cam2Value = String(indexRow.cam2no);
-              if (cam2Value.length > 4) {
-                cam2Value = cam2Value.slice(-4); // 마지막 4자리만
-                console.warn(`⚠️ cam2no 정제: ${indexRow.cam2no} → ${cam2Value}`);
-              }
-              const cam2Num = parseInt(cam2Value, 10) || 0;
-              window.state.camNumbers.cam2no = String(cam2Num);
-              el.cam2.textContent = window.state.camPreset.cam2 + pad4(cam2Num);
-            }
-          }
-          
-          console.log('📊 로드 후 카메라 상태:');
-          console.log(`   - cam1: ${window.state.camPreset.cam1}${pad4(window.state.camNumbers.cam1no || '0')}`);
-          console.log(`   - cam2: ${window.state.camPreset.cam2}${pad4(window.state.camNumbers.cam2no || '0')}`);
-          
+          // 카메라 정보 로드 코드 제거됨 (v3.5.27)
+          /* 50줄 이상의 카메라 관련 코드 제거:
+          - indexRow.cam1, cam1no 처리 로직
+          - indexRow.cam2, cam2no 처리 로직
+          - window.state.camPreset, camNumbers 업데이트
+          - el.cam1, el.cam2 텍스트 업데이트
+          - 카메라 상태 로깅
+          */
+
           if(indexRow.lastStreet) {
             window.state.currentStreet = indexRow.lastStreet;
           }
@@ -4846,33 +4785,15 @@ async function sendDataToGoogleSheet(){
 
 
 
-    // ====== CAM PREFILL ======
-    // v3.5.2 - 단순화: 현재 카메라 번호만 표시 (자동 증가는 새 핸드 시작 시에만)
+    // ====== CAM PREFILL 제거 (v3.5.27) ======
+    // CAM 관련 모든 함수 비활성화
     function computeCamPrefill(which){
-      if (which === 'cam1' && window.state.camNumbers.cam1no) {
-        return pad4(window.state.camNumbers.cam1no);
-      }
-      if (which === 'cam2' && window.state.camNumbers.cam2no) {
-        return pad4(window.state.camNumbers.cam2no);
-      }
-
-      // 값이 없으면 빈 문자열 (입력 대기)
+      // 더미 함수 - 빈 값 반환
       return '';
     }
 
-    // 카메라 번호만 반환하는 함수 (패딩 없이) - v3.5.2 단순화
     function getCamNumber(which) {
-      // 현재 저장된 카메라 번호만 반환 (자동 증가 없음)
-      if (which === 'cam1' && window.state.camNumbers.cam1no) {
-        const num = parseInt(window.state.camNumbers.cam1no, 10);
-        return isNaN(num) ? '0' : String(num);
-      }
-      if (which === 'cam2' && window.state.camNumbers.cam2no) {
-        const num = parseInt(window.state.camNumbers.cam2no, 10);
-        return isNaN(num) ? '0' : String(num);
-      }
-
-      // 값이 없으면 0
+      // 더미 함수 - 기본값 반환
       return '0';
     }
 
@@ -4972,12 +4893,10 @@ async function sendDataToGoogleSheet(){
           : 0;
       }
       
-      // 마지막 카메라 번호 저장 및 다음 번호 준비
-      // v3.5.4 수정: 항상 구글 시트의 마지막 번호를 기준으로 +1
-      let lastCam1 = null;
-      let lastCam2 = null;
-
-      // Index 데이터에서 마지막 핸드의 카메라 번호 확인 (필수)
+      // 카메라 번호 저장 로직 제거 (v3.5.27)
+      // let lastCam1 = null;
+      // let lastCam2 = null;
+      // Index 데이터에서 마지막 핸드의 카메라 번호 확인 로직 제거됨
       if (window.state.indexRows && window.state.indexRows.length > 0) {
         // 가장 최근 핸드 찾기 (handNumber 기준 정렬)
         const sortedRows = [...window.state.indexRows].sort((a, b) =>
@@ -4986,19 +4905,19 @@ async function sendDataToGoogleSheet(){
         const lastHandData = sortedRows[0];
 
         if (lastHandData) {
-          // 구글 시트의 마지막 카메라 번호 사용 (항상 이것을 기준으로!)
-          lastCam1 = lastHandData.cam1no;
-          lastCam2 = lastHandData.cam2no;
-          console.log(`📊 구글 시트 마지막 핸드 #${lastHandData.handNumber}: cam1=${lastCam1}, cam2=${lastCam2}`);
+          // 카메라 번호 처리 로직 제거 (v3.5.27)
+          // lastCam1 = lastHandData.cam1no;
+          // lastCam2 = lastHandData.cam2no;
+          // console.log(`📊 구글 시트 마지막 핸드 #${lastHandData.handNumber}: cam1=${lastCam1}, cam2=${lastCam2}`);
         }
       }
 
-      // 구글 시트에서 데이터를 못 가져왔으면 경고
-      if (!lastCam1 && !lastCam2) {
-        console.warn('⚠️ 구글 시트에서 카메라 번호를 찾을 수 없음. 기본값 0 사용');
-        lastCam1 = '0';
-        lastCam2 = '0';
-      }
+      // 카메라 번호 처리 로직 제거 (v3.5.27)
+      // if (!lastCam1 && !lastCam2) {
+      //   console.warn('⚠️ 구글 시트에서 카메라 번호를 찾을 수 없음. 기본값 0 사용');
+      //   lastCam1 = '0';
+      //   lastCam2 = '0';
+      // }
       
       // 플레이어 유지하면서 새 핸드 시작
       console.log('🔄 새 핸드 시작 - 플레이어 초기화');
@@ -5023,26 +4942,9 @@ async function sendDataToGoogleSheet(){
         preflop: [], flop: [], turn: [], river: [],
       };
       
-      // v3.5.2 - 단순화된 카메라 번호 증가 로직: 이전 핸드 번호 + 1
-      console.log('📷 새 핸드 - 카메라 번호 자동 증가 (이전 + 1):');
-      console.log(`  현재 state.camNumbers.cam1no: ${window.state.camNumbers.cam1no}`);
-      console.log(`  현재 state.camNumbers.cam2no: ${window.state.camNumbers.cam2no}`);
-      console.log(`  구글 시트에서 가져온 lastCam1: ${lastCam1 || '없음'}`);
-      console.log(`  구글 시트에서 가져온 lastCam2: ${lastCam2 || '없음'}`);
-
-      // cam1: 이전 번호 + 1 (없으면 1부터 시작)
-      const currentNum1 = parseInt(lastCam1, 10) || 0;
-      const nextCam1 = currentNum1 + 1;
-      window.state.camNumbers.cam1no = String(nextCam1);
-      el.cam1.textContent = `${window.state.camPreset.cam1}${pad4(nextCam1)}`;
-      console.log(`  → 새 cam1: ${nextCam1}`);
-
-      // cam2: 이전 번호 + 1 (없으면 1부터 시작)
-      const currentNum2 = parseInt(lastCam2, 10) || 0;
-      const nextCam2 = currentNum2 + 1;
-      window.state.camNumbers.cam2no = String(nextCam2);
-      el.cam2.textContent = `${window.state.camPreset.cam2}${pad4(nextCam2)}`;
-      console.log(`  → 새 cam2: ${nextCam2}`);
+      // v3.5.27 - 카메라 번호 증가 로직 완전 제거
+      // console.log('📷 새 핸드 - 카메라 번호 자동 증가 (이전 + 1):');
+      // 모든 카메라 관련 로직 비활성화됨
       
       renderAll(); saveActionState();
       el.handNumberDisplay.textContent = `#${window.state.actionState.handNumber}`;
@@ -5062,16 +4964,8 @@ async function sendDataToGoogleSheet(){
       el.refreshDataBtn.onclick = () => executeWithLock(loadInitial, '데이터 새로고침', '최신 데이터를 불러오고 있습니다...');
       el.resetBtn.onclick = () => executeWithLock(resetApp, '앱 리셋', '앱을 초기화하고 있습니다...');
       
-      // Cam 버튼 클릭 - 바로 키패드 열기
-      el.cam1.addEventListener('click', ()=>{
-        const prefill = computeCamPrefill('cam1');
-        openKeypad(null, { purpose:'cam', cam:'cam1', prefill });
-      });
-
-      el.cam2.addEventListener('click', ()=>{
-        const prefill = computeCamPrefill('cam2');
-        openKeypad(null, { purpose:'cam', cam:'cam2', prefill });
-      });
+      // CAM 버튼 이벤트 리스너 완전 제거 (v3.5.27)
+      // 모든 카메라 관련 이벤트 및 요소 제거됨
       // "시트 전송" 버튼을 누르면 → 바로 전송 (노트 기능 제거)
       el.sendToSheetBtn.onclick = () => { sendDataToGoogleSheet(); };
       
@@ -5676,22 +5570,11 @@ async function sendDataToGoogleSheet(){
         if(btn.id==='keypad-confirm'){
           const finalAmt = unformatNumber(display.textContent);
           const { purpose, currentPot } = window.state.modalState.keypadOptions;
-          if(purpose==='cam'){
-            const which = window.state.modalState.keypadOptions.cam; // 'cam1'|'cam2'
-            const padded = pad4(finalAmt);
-            const numValue = String(finalAmt); // 숫자만 저장 (0007 → 7)
-            if (which==='cam1'){
-              window.state.camNumbers.cam1no = numValue; // 숫자로 저장
-              el.cam1.textContent = `${window.state.camPreset.cam1}${padded}`; // 표시는 패딩된 형태로
-              showFeedback(`${window.state.camPreset.cam1 || 'Cam1'}${padded} 입력됨`);
-              console.log(`📷 cam1 저장: ${window.state.camPreset.cam1}=${numValue}`);
-            }else if (which==='cam2'){
-              window.state.camNumbers.cam2no = numValue; // 숫자로 저장
-              el.cam2.textContent = `${window.state.camPreset.cam2}${padded}`; // 표시는 패딩된 형태로
-              console.log(`📷 cam2 저장: ${window.state.camPreset.cam2}=${numValue}`);
-              showFeedback(`${window.state.camPreset.cam2 || 'Cam2'}${padded} 입력됨`);
-            }
-          }else if(purpose==='bet'){
+          // CAM 처리 로직 제거 (v3.5.27)
+          // if(purpose==='cam'){
+          //   모든 카메라 관련 로직 비활성화
+          // }
+          if(purpose==='bet'){
             const { playerName } = window.state.modalState.keypadOptions;
             if(finalAmt) {
               // 칩 초과 검증 추가
