@@ -1380,10 +1380,14 @@
   };
   
   document.addEventListener('DOMContentLoaded', async () => {
-    // Config 시트에서 Apps Script URL 로드 (최우선 실행)
-    console.log('📡 Config 시트에서 Apps Script URL 로드 시작...');
-    await loadAppsScriptUrlFromConfig();
-    console.log('✅ Apps Script URL 로드 완료:', APPS_SCRIPT_URL);
+    // Apps Script URL 확인 및 Config 시트 로드 (선택)
+    if (APPS_SCRIPT_URL) {
+      console.log('🔄 현재 Apps Script URL:', APPS_SCRIPT_URL);
+      await loadAppsScriptUrlFromConfig();
+    } else {
+      console.warn('⚠️ Apps Script URL이 설정되지 않았습니다.');
+      console.warn('→ 관리 > 설정에서 URL을 입력해주세요.');
+    }
 
     // 버전 표시 업데이트
     updateAllVersionDisplays();
@@ -1399,49 +1403,67 @@
       versionDisplay.textContent = `${APP_VERSION} (${VERSION_DATE})`;
     }
     
-    // ====== CONFIG v71.0.5 ULTIMATE ======
-    // 기본 URL 먼저 설정 (CORS 오류 대비)
-    const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/a/macros/ggproduction.net/s/AKfycby8n7D5slaHhHoNbZ7SogJtdvHrREUA1WnvRbu40741NSpsOq4HdbRSIKaBdJxf7w2l/exec';
+    // ====== CONFIG v71.0.6 ULTIMATE ======
+    // Apps Script URL 관리 - localStorage 우선
+    let APPS_SCRIPT_URL = null;
 
-    // 초기값 설정 - undefined 방지
-    let APPS_SCRIPT_URL = localStorage.getItem('appsScriptUrl') || DEFAULT_APPS_SCRIPT_URL;
+    // 초기 URL 로드 (localStorage 우선)
+    function initializeAppsScriptUrl() {
+      const cachedUrl = localStorage.getItem('appsScriptUrl');
 
-    // Config 시트에서 URL 가져오기 (옵션)
-    async function loadAppsScriptUrlFromConfig() {
-      try {
-        console.log('📡 Config 시트 URL 로드 시도... (선택사항)');
-
-        // CORS 에러가 발생할 수 있으므로 try-catch로 보호
-        try {
-          const response = await fetch(DEFAULT_APPS_SCRIPT_URL + '?action=getConfigUrl', {
-            method: 'GET',
-            mode: 'cors'
-          });
-
-          if (response.ok) {
-            const result = await response.json();
-
-            if (result.success && result.url) {
-              APPS_SCRIPT_URL = result.url;
-              localStorage.setItem('appsScriptUrl', result.url);
-              console.log('✅ Config 시트 A1에서 URL 로드 성공:', result.url);
-              return result.url;
-            }
-          }
-        } catch (fetchError) {
-          // CORS 에러는 무시하고 기본 URL 사용
-          console.log('⚠️ Config 시트 접근 불가 (CORS). 기본 URL 사용');
-        }
-
-        // Config 로드 실패 시 현재 URL 유지
-        console.log('📌 현재 URL 사용:', APPS_SCRIPT_URL);
-        return APPS_SCRIPT_URL;
-
-      } catch (error) {
-        console.error('Config URL 로드 중 예외:', error);
-        // 모든 오류 무시하고 현재 설정된 URL 반환
-        return APPS_SCRIPT_URL;
+      if (cachedUrl) {
+        APPS_SCRIPT_URL = cachedUrl;
+        console.log('📂 저장된 URL 사용:', cachedUrl);
+        return cachedUrl;
       }
+
+      // localStorage에 URL이 없으면 사용자에게 알림
+      console.warn('⚠️ Apps Script URL이 설정되지 않았습니다.');
+      console.warn('💡 해결방법:');
+      console.warn('1. 관리 버튼 → 설정 탭에서 Apps Script URL 입력');
+      console.warn('2. 또는 Google Sheets의 Config 시트 A1에 URL 입력');
+
+      // URL이 없어도 앱은 실행 (읽기 전용 모드)
+      APPS_SCRIPT_URL = null;
+      return null;
+    }
+
+    // 즉시 초기화 실행
+    initializeAppsScriptUrl();
+
+    // Config 시트에서 URL 가져오기 (옵션 - URL이 있을 때만 시도)
+    async function loadAppsScriptUrlFromConfig() {
+      // URL이 없으면 시도하지 않음
+      if (!APPS_SCRIPT_URL) {
+        console.log('🔍 Config 시트 로드 건너뜀 (URL 미설정)');
+        return null;
+      }
+
+      try {
+        console.log('📡 Config 시트 URL 확인 중...');
+
+        const response = await fetch(APPS_SCRIPT_URL + '?action=getConfigUrl', {
+          method: 'GET',
+          mode: 'cors'
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+
+          if (result.success && result.url && result.url !== APPS_SCRIPT_URL) {
+            // Config 시트에 다른 URL이 있으면 업데이트
+            APPS_SCRIPT_URL = result.url;
+            localStorage.setItem('appsScriptUrl', result.url);
+            console.log('✅ Config 시트 A1에서 새 URL 발견:', result.url);
+            return result.url;
+          }
+        }
+      } catch (error) {
+        // Config 시트 접근 실패는 무시 (선택 기능)
+        console.log('📌 Config 시트 접근 실패. 현재 URL 유지');
+      }
+
+      return APPS_SCRIPT_URL;
     }
 
     // v70 구조 강제 적용을 위한 localStorage 초기화
