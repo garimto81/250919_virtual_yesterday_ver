@@ -153,22 +153,22 @@
   <meta http-equiv="expires" content="0" />
   <title>포커 핸드 로거 v3.5.24</title>
   <script src="https://cdn-tailwindcss.vercel.app/"></script>
-  <script src="archive/chip-analysis-module.js?v=3.0.0" defer></script>
+  <script src="archive/chip-analysis-module.js?v=3.5.25" defer></script>
   <!-- 테이블 관리 모듈 v59 - IN/OUT 두 가지 상태만 사용 -->
-  <script src="archive/table-management-v59.js?v=3.0.0" defer></script>
+  <script src="archive/table-management-v59.js?v=3.5.25" defer></script>
   <!-- ActionHistory 시스템 - Phase 1 -->
-  <script src="archive/action-history.js?v=3.2.5" defer></script>
+  <script src="archive/action-history.js?v=3.5.25" defer></script>
   <!-- Phase 2: 더블탭 & 배치 처리 -->
-  <script src="archive/double-tap-handler.js?v=3.2.5" defer></script>
-  <script src="archive/batch-processor.js?v=3.2.5" defer></script>
+  <script src="archive/double-tap-handler.js?v=3.5.25" defer></script>
+  <script src="archive/batch-processor.js?v=3.5.25" defer></script>
   <!-- Phase 3: 모바일 최적화 -->
-  <script src="archive/mobile-optimizer.js?v=3.2.5" defer></script>
-  <script src="archive/virtual-scroll.js?v=3.2.5" defer></script>
-  <script src="archive/offline-storage.js?v=3.2.5" defer></script>
+  <script src="archive/mobile-optimizer.js?v=3.5.25" defer></script>
+  <script src="archive/virtual-scroll.js?v=3.5.25" defer></script>
+  <script src="archive/offline-storage.js?v=3.5.25" defer></script>
   <!-- 모달 자동 닫기 모듈 -->
-  <script src="src/js/modal-auto-close.js?v=1.0.0" defer></script>
+  <script src="src/js/modal-auto-close.js?v=3.5.25" defer></script>
   <!-- 성능 최적화 모듈 -->
-  <script src="src/js/performance-optimizer.js?v=1.0.1" defer></script>
+  <script src="src/js/performance-optimizer.js?v=3.5.25" defer></script>
   <!-- 모바일 향상 모듈 (일시 비활성화 - 폰트 및 스크롤 문제) -->
   <!-- <script src="src/js/mobile-enhancer.js?v=1.0.0" defer></script> -->
   <style>
@@ -768,7 +768,7 @@
   // ========================================
   // 중앙 버전 관리 시스템
   // ========================================
-  const APP_VERSION = 'v3.5.24';
+  const APP_VERSION = 'v3.5.26';
   const VERSION_DATE = '2025-09-22';
   const VERSION_INFO = `포커 핸드 로거 ${APP_VERSION} (${VERSION_DATE})`;
 
@@ -1843,11 +1843,11 @@
     let timeUpdater;
     window.state = {
       currentStreet: 'preflop',  // 현재 진행 중인 스트리트
-      camNumbers: { cam1no:'', cam2no:'' }, // 파일 넘버 입력이 있다면 여기에 저장
-      // v3.5.2 - lastCamNo 제거 (단순화)
+      // CAM 관련 변수 제거 (v3.5.26)
+      // camNumbers: { cam1no:'', cam2no:'' }, // 제거됨
+      // camPreset: { cam1:'', cam2:'' }, // 제거됨
 
       playerDataByTable: {},     // { [table]: [{name, chips, notable}] }
-      camPreset: { cam1:'', cam2:'' }, // Type!A2/A3
       allTables: [],
       indexRows: [],             // [{handNumber, handUpdatedAt, table, ...}]
       allHandNumbers: [],        // latest numbers (from Index)
@@ -1930,8 +1930,9 @@
       timeDisplay: document.getElementById('time-display'),
       managePlayersBtn: document.getElementById('manage-players-btn'),
       registrationModal: document.getElementById('registration-modal'),
-      cam1: document.getElementById('cam-btn-1'),
-      cam2: document.getElementById('cam-btn-2'),
+      // CAM 버튼 제거 (v3.5.26)
+      // cam1: document.getElementById('cam-btn-1'),
+      // cam2: document.getElementById('cam-btn-2'),
       dataStamp: document.getElementById('data-stamp'),
       // 설정 모달 관련
       settingsBtn: document.getElementById('settings-btn'),
@@ -3979,14 +3980,8 @@
         return;
       }
 
-      // 카메라 프리셋 제거 - 고정값 사용
-      window.state.camPreset.cam1='Cam1';
-      window.state.camPreset.cam2='Cam2';
-
-      // 카메라 버튼 초기화 (고정 프리셋 사용)
-      el.cam1.textContent = `Cam10001`;
-      el.cam2.textContent = `Cam20001`;
-      console.log(`📹 카메라 프리셋 고정값 사용: Cam1, Cam2`);
+      // CAM 관련 초기화 코드 제거 (v3.5.26)
+      console.log(`📹 CAM 기능이 비활성화되었습니다`);
 
       const byTable={};
       console.log('[v3.5.5] 📊 첫 번째 행 (헤더):', rows[0]);
@@ -4095,7 +4090,9 @@
         const item={
           handNumber:String(r[0]||''), startRow:+(r[1]||0), endRow:+(r[2]||0),
           handUpdatedAt:String(r[3]||''), handEdit:r[4], handEditTime:r[5], label:r[6],
-          table:String(r[7]||''), tableUpdatedAt:r[8], cam:r[9], cam1:r[10], cam1no:r[11], cam2:r[12], cam2no:r[13],
+          table:String(r[7]||''), tableUpdatedAt:r[8],
+          // CAM 관련 필드 무시 (v3.5.26)
+          cam:r[9], cam1:r[10], cam1no:r[11], cam2:r[12], cam2no:r[13],
           lastStreet:String(r[14]||''), lastAction:String(r[15]||''), workStatus:String(r[16]||'')  // 새로운 열들
         };
         if(item.handNumber) out.push(item);
@@ -4783,10 +4780,8 @@ async function sendDataToGoogleSheet(){
       const handUpdatedAt = new Date().toISOString().split('T')[0]; // YYYY-MM-DD 형식
       const table = window.state.selectedTable || '';
       
-      // 카메라 정보 로깅
-      console.log('📦 Index 메타데이터 빌드:');
-      console.log(`  cam1: ${window.state.camPreset.cam1} / 번호: ${window.state.camNumbers.cam1no}`);
-      console.log(`  cam2: ${window.state.camPreset.cam2} / 번호: ${window.state.camNumbers.cam2no}`);
+      // CAM 로깅 제거 (v3.5.26)
+      console.log('📦 Index 메타데이터 빌드 완료');
       
       // 마지막 액션 찾기
       let lastActionDesc = '';
@@ -4823,11 +4818,11 @@ async function sendDataToGoogleSheet(){
         label: 'HOLDEM',                                      // G열
         table,                                                 // H열
         tableUpdatedAt: handUpdatedAt,                        // I열 (YYYY-MM-DD)
-        cam: `${window.state.camPreset.cam1 || ''}+${window.state.camPreset.cam2 || ''}`, // J열
-        camFile01name: window.state.camPreset.cam1 || '',            // K열
-        camFile01number: getCamNumber('cam1'), // L열 - 자동 계산된 번호
-        camFile02name: window.state.camPreset.cam2 || '',            // M열
-        camFile02number: getCamNumber('cam2'), // N열 - 자동 계산된 번호
+        cam: '', // J열 - CAM 기능 제거됨 (v3.5.26)
+        camFile01name: '',            // K열 - 빈 값
+        camFile01number: '0', // L열 - 기본값 0
+        camFile02name: '',            // M열 - 빈 값
+        camFile02number: '0', // N열 - 기본값 0
         lastStreet: window.state.currentStreet,                      // O열
         lastAction: lastActionDesc,                           // P열
         workStatus: determineWorkStatus()                     // Q열
@@ -7054,6 +7049,6 @@ async function sendDataToGoogleSheet(){
   <div id="snackbar" class="snackbar"></div>
 
   <!-- 중복 플레이어 제거 모듈 (매 새로고침마다 자동 실행) -->
-  <script src="src/js/duplicate-remover.js?v=3.4.16"></script>
+  <script src="src/js/duplicate-remover.js?v=3.5.25"></script>
 </body>
 </html>
