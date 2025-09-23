@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>포커 로거 테스트 v3.5.28</title>
+</head>
+<body>
+  <h1>포커 핸드 로거 v3.5.28 테스트</h1>
+  <div id="test-results" style="font-family: monospace; white-space: pre;"></div>
+
+  <script>
+    const results = document.getElementById('test-results');
+    let testCount = 0;
+    let passCount = 0;
+    let failCount = 0;
+
+    function test(description, testFn) {
+      testCount++;
+      try {
+        testFn();
+        passCount++;
+        results.textContent += `✅ PASS: ${description}\n`;
+      } catch(error) {
+        failCount++;
+        results.textContent += `❌ FAIL: ${description}\n   Error: ${error.message}\n`;
+      }
+    }
+
+    // 테스트 시작
+    results.textContent = '=== v3.5.28 테스트 시작 ===\n\n';
+
+    // 1. ActionOrderManager 초기화 테스트
+    test('ActionOrderManager 클래스가 정의되어 있어야 함', () => {
+      if (!window.ActionOrderManager) {
+        // index.html을 iframe으로 로드해서 테스트
+        const iframe = document.createElement('iframe');
+        iframe.src = 'index.html';
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+
+        iframe.onload = function() {
+          const iframeWindow = iframe.contentWindow;
+
+          test('iframe 내 ActionOrderManager 존재 확인', () => {
+            if (!iframeWindow.ActionOrderManager) {
+              throw new Error('ActionOrderManager가 정의되지 않음');
+            }
+          });
+
+          test('iframe 내 window.actionManager 초기화 확인', () => {
+            if (!iframeWindow.actionManager) {
+              throw new Error('window.actionManager가 초기화되지 않음');
+            }
+          });
+
+          test('iframe 내 showFeedback 전역 등록 확인', () => {
+            if (typeof iframeWindow.showFeedback !== 'function') {
+              throw new Error('window.showFeedback이 함수가 아님');
+            }
+          });
+
+          test('iframe 내 openCardSelector 전역 등록 확인', () => {
+            if (typeof iframeWindow.openCardSelector !== 'function') {
+              throw new Error('window.openCardSelector가 함수가 아님');
+            }
+          });
+
+          // 테스트 결과 요약
+          setTimeout(() => {
+            results.textContent += '\n=== 테스트 결과 ===\n';
+            results.textContent += `총 테스트: ${testCount}\n`;
+            results.textContent += `통과: ${passCount}\n`;
+            results.textContent += `실패: ${failCount}\n`;
+            results.textContent += `성공률: ${(passCount/testCount*100).toFixed(1)}%\n`;
+
+            if (failCount === 0) {
+              results.textContent += '\n✨ 모든 테스트 통과! v3.5.28 안정적입니다.\n';
+            } else {
+              results.textContent += '\n⚠️ 일부 테스트 실패. 추가 수정이 필요합니다.\n';
+            }
+          }, 1000);
+        };
+      }
+    });
+  </script>
+</body>
+</html>

@@ -2,10 +2,16 @@
 <!--
   ============================================
   포커 핸드 로거 (Poker Hand Logger)
-  Version: 3.5.27
+  Version: 3.5.28
   Last Modified: 2025-09-23 KST
 
   Change Log:
+  - v3.5.28 (2025-09-23): 연쇄적인 문제 해결 및 코드 안정성 개선
+    • ActionOrderManager 클래스 초기화 순서 수정 (클래스 정의 직후 초기화)
+    • window.showFeedback, window.openCardSelector 전역 참조 보장
+    • 모든 함수 호출에서 window 객체 명시적 참조 추가
+    • 보드 카드 프롬프트 및 스킵 함수의 showFeedback 참조 수정
+    • 코드 구조 개선으로 연쇄적인 오류 방지
   - v3.5.27 (2025-09-23): CAM 기능 완전 제거
     • 모든 카메라 관련 UI 요소 제거 (cam-btn-1, cam-btn-2, camera-view)
     • window.state.camNumbers, camPreset 변수 제거
@@ -159,7 +165,7 @@
   <meta http-equiv="cache-control" content="no-cache, must-revalidate, max-age=0" />
   <meta http-equiv="pragma" content="no-cache" />
   <meta http-equiv="expires" content="0" />
-  <title>포커 핸드 로거 v3.5.27</title>
+  <title>포커 핸드 로거 v3.5.28</title>
   <script src="https://cdn-tailwindcss.vercel.app/"></script>
   <script src="archive/chip-analysis-module.js?v=3.5.25" defer></script>
   <!-- 테이블 관리 모듈 v59 - IN/OUT 두 가지 상태만 사용 -->
@@ -1281,8 +1287,12 @@
         index: street === 'turn' ? 3 : street === 'river' ? 4 : 0
       };
 
-      // 기존 카드 선택 모달 사용
-      openCardSelector();
+      // 기존 카드 선택 모달 사용 - window 객체에서 호출
+      if (typeof window.openCardSelector === 'function') {
+        window.openCardSelector();
+      } else {
+        console.error('openCardSelector 함수를 찾을 수 없습니다');
+      }
     }
 
     // 보드 카드 저장 (v3.4.7 - 카드 선택 UI와 연동)
@@ -1292,7 +1302,7 @@
       console.log('[v3.4.7] saveBoardCards는 deprecated - assignCard 사용');
     }
 
-    // 보드 카드 건너뛰기 (v3.4.7 - 수정됨)
+    // 보드 카드 건너뛰기 (v3.4.7 - 수정됨, v3.5.28 window 참조 추가)
     skipBoardCards(street) {
       console.log(`보드 카드 입력 건너뛰기: ${street}`);
       // 보드 카드 없이 진행
@@ -1300,9 +1310,9 @@
       this.currentPlayerIndex = 0;
       window.state.currentStreet = this.currentStreet;
 
-      // showFeedback 함수 확인
-      if (typeof showFeedback === 'function') {
-        showFeedback(`🎯 ${this.currentStreet.toUpperCase()} 스트릿으로 진행`, false);
+      // showFeedback 함수 확인 - window 객체에서 참조
+      if (typeof window.showFeedback === 'function') {
+        window.showFeedback(`🎯 ${this.currentStreet.toUpperCase()} 스트릿으로 진행`, false);
       } else {
         console.log(`🎯 ${this.currentStreet.toUpperCase()} 스트릿으로 진행`);
       }
@@ -1333,8 +1343,8 @@
 
     // 스트릿 진행 알림 (v3.4.7 - showFeedback 함수 체크 추가)
     showStreetAdvanceNotification() {
-      if (typeof showFeedback === 'function') {
-        showFeedback(`🎯 ${this.currentStreet.toUpperCase()} 스트릿으로 자동 진행`, false);
+      if (typeof window.showFeedback === 'function') {
+        window.showFeedback(`🎯 ${this.currentStreet.toUpperCase()} 스트릿으로 자동 진행`, false);
       } else {
         console.log(`🎯 ${this.currentStreet.toUpperCase()} 스트릿으로 자동 진행`);
       }
@@ -1348,8 +1358,9 @@
     }
   }
 
-  // 전역 액션 관리자 인스턴스
+  // 전역 액션 관리자 인스턴스 - 클래스 정의 직후 초기화
   window.actionManager = new ActionOrderManager();
+  console.log('ActionOrderManager 초기화 완료');
 
   // 모든 버전 표시를 업데이트하는 함수
   function updateAllVersionDisplays() {
@@ -4956,7 +4967,7 @@ async function sendDataToGoogleSheet(){
       el.feedbackMessage.className = `text-center h-4 text-xs font-semibold ${isErr?'text-red-400':'text-green-400'}`;
     }
 
-    // 전역에서 접근 가능하도록 설정 (v3.4.9)
+    // 전역에서 접근 가능하도록 설정 (v3.4.9, v3.5.28 수정)
     window.showFeedback = showFeedback;
     window.openCardSelector = openCardSelector;
 

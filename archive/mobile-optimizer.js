@@ -458,8 +458,12 @@ class MobileOptimizer {
       const memory = performance.memory;
       const usedMB = Math.round(memory.usedJSHeapSize / 1024 / 1024 * 100) / 100;
 
-      if (usedMB > 20) {
-        console.warn(`High memory usage: ${usedMB}MB`);
+      // 임계값을 30MB로 상향 조정 (일반적인 웹앱 사용량)
+      if (usedMB > 30) {
+        // 디버그 모드에서만 경고 표시
+        if (localStorage.getItem('debug') === 'true') {
+          console.warn(`Memory usage: ${usedMB}MB (threshold: 30MB)`);
+        }
 
         // 메모리 정리 시도
         this.cleanupMemory();
@@ -468,18 +472,54 @@ class MobileOptimizer {
   }
 
   /**
-   * 메모리 정리
+   * 메모리 정리 - 개선된 버전
    */
   cleanupMemory() {
-    // 타이머 정리
+    // 1. 타이머 정리
     this.debounceTimers.forEach(timer => clearTimeout(timer));
     this.debounceTimers.clear();
 
-    // 오래된 DOM 이벤트 리스너 정리
+    // 2. 오래된 DOM 요소 정리
     const oldMenus = document.querySelectorAll('#mobile-context-menu');
     oldMenus.forEach(menu => menu.remove());
 
-    // 가비지 컬렉션 유도 (브라우저 의존적)
+    // 3. 액션 로그 정리 (최근 50개만 유지)
+    if (window.state && window.state.actionState) {
+      const streets = ['preflop', 'flop', 'turn', 'river'];
+      streets.forEach(street => {
+        if (window.state.actionState[street] &&
+            Array.isArray(window.state.actionState[street]) &&
+            window.state.actionState[street].length > 50) {
+          window.state.actionState[street] = window.state.actionState[street].slice(-50);
+        }
+      });
+    }
+
+    // 4. 플레이어 데이터 캐시 정리 (비활성 테이블)
+    if (window.state && window.state.playerDataByTable) {
+      const currentTable = window.state.selectedTable;
+      const tables = Object.keys(window.state.playerDataByTable);
+
+      // 테이블이 10개 이상이면 오래된 것부터 정리
+      if (tables.length > 10) {
+        tables.forEach(table => {
+          if (table !== currentTable) {
+            // 현재 테이블이 아닌 경우 일부 정리
+            const players = window.state.playerDataByTable[table];
+            if (players && players.length > 20) {
+              window.state.playerDataByTable[table] = players.slice(0, 20);
+            }
+          }
+        });
+      }
+    }
+
+    // 5. 콘솔 로그 버퍼 정리
+    if (window.logBuffer && window.logBuffer.length > 30) {
+      window.logBuffer = window.logBuffer.slice(-30);
+    }
+
+    // 6. 가비지 컬렉션 유도 (브라우저 의존적)
     if (window.gc) {
       window.gc();
     }
@@ -505,10 +545,10 @@ class MobileOptimizer {
 // 전역 인스턴스 생성
 window.mobileOptimizer = new MobileOptimizer();
 
-// 성능 모니터링 (5초마다)
+// 성능 모니터링 (30초마다로 변경 - 메모리 체크 빈도 감소)
 setInterval(() => {
   window.mobileOptimizer.monitorPerformance();
-}, 5000);
+}, 30000);
 
 // Export for module usage
 if (typeof module !== 'undefined' && module.exports) {
