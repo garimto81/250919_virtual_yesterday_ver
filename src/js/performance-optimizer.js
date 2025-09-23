@@ -231,8 +231,14 @@ class PerformanceOptimizer {
     // 분리된 DOM 노드 찾아서 제거
     const allNodes = document.querySelectorAll('*');
     allNodes.forEach(node => {
-      if (!document.body.contains(node) && node.parentNode) {
-        node.parentNode.removeChild(node);
+      // null 체크 추가 - parentNode가 null일 수 있음
+      if (node && node.parentNode && !document.body.contains(node)) {
+        try {
+          node.parentNode.removeChild(node);
+        } catch (e) {
+          // 이미 제거된 노드일 수 있으므로 에러 무시
+          console.debug('Node already removed:', e);
+        }
       }
     });
   }

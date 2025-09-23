@@ -151,7 +151,7 @@
   <meta http-equiv="cache-control" content="no-cache, must-revalidate, max-age=0" />
   <meta http-equiv="pragma" content="no-cache" />
   <meta http-equiv="expires" content="0" />
-  <title>포커 핸드 로거 v3.5.19</title>
+  <title>포커 핸드 로거 v3.5.20</title>
   <script src="https://cdn-tailwindcss.vercel.app/"></script>
   <script src="archive/chip-analysis-module.js?v=3.0.0" defer></script>
   <!-- 테이블 관리 모듈 v59 - IN/OUT 두 가지 상태만 사용 -->
@@ -768,7 +768,7 @@
   // ========================================
   // 중앙 버전 관리 시스템
   // ========================================
-  const APP_VERSION = 'v3.5.19';
+  const APP_VERSION = 'v3.5.20';
   const VERSION_DATE = '2025-09-22';
   const VERSION_INFO = `포커 핸드 로거 ${APP_VERSION} (${VERSION_DATE})`;
 
@@ -1379,10 +1379,15 @@
     console.log.apply(console, [`[${APP_VERSION}] NOTICE:`, ...args]);
   };
   
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
+    // Config 시트에서 Apps Script URL 로드 (최우선 실행)
+    console.log('📡 Config 시트에서 Apps Script URL 로드 시작...');
+    await loadAppsScriptUrlFromConfig();
+    console.log('✅ Apps Script URL 로드 완료:', APPS_SCRIPT_URL);
+
     // 버전 표시 업데이트
     updateAllVersionDisplays();
-    
+
     console.log(`%c🚀 앱 초기화 시작 - ${VERSION_INFO}`, 'color: #10b981; font-weight: bold');
     console.log('Initialized at', new Date().toISOString());
     
@@ -1394,11 +1399,47 @@
       versionDisplay.textContent = `${APP_VERSION} (${VERSION_DATE})`;
     }
     
-    // ====== CONFIG v70 ULTIMATE ======
-    // v70 ULTIMATE Apps Script URL 설정
-    const V70_APPS_SCRIPT_URL = 'https://script.google.com/a/macros/ggproduction.net/s/AKfycby8n7D5slaHhHoNbZ7SogJtdvHrREUA1WnvRbu40741NSpsOq4HdbRSIKaBdJxf7w2l/exec';
-    localStorage.setItem('appsScriptUrl', V70_APPS_SCRIPT_URL);
-    let APPS_SCRIPT_URL = V70_APPS_SCRIPT_URL;
+    // ====== CONFIG v71.0.4 ULTIMATE ======
+    // Config 시트 A1에서 Apps Script URL 동적 로드
+    let APPS_SCRIPT_URL = null;
+
+    // Config 시트에서 URL 가져오기
+    async function loadAppsScriptUrlFromConfig() {
+      try {
+        // 임시 URL로 먼저 Config 시트 접근
+        const tempUrl = 'https://script.google.com/a/macros/ggproduction.net/s/AKfycby8n7D5slaHhHoNbZ7SogJtdvHrREUA1WnvRbu40741NSpsOq4HdbRSIKaBdJxf7w2l/exec';
+
+        const response = await fetch(tempUrl + '?action=getConfigUrl');
+        const result = await response.json();
+
+        if (result.success && result.url) {
+          APPS_SCRIPT_URL = result.url;
+          localStorage.setItem('appsScriptUrl', result.url);
+          console.log('✅ Config 시트 A1에서 URL 로드:', result.url);
+          return result.url;
+        } else {
+          // Config에 URL이 없으면 기본 URL 사용
+          APPS_SCRIPT_URL = tempUrl;
+          localStorage.setItem('appsScriptUrl', tempUrl);
+          console.log('⚠️ Config 시트에 URL 없음. 기본 URL 사용');
+          return tempUrl;
+        }
+      } catch (error) {
+        console.error('Config URL 로드 실패:', error);
+        // 오류 시 localStorage에서 가져오기
+        const cachedUrl = localStorage.getItem('appsScriptUrl');
+        if (cachedUrl) {
+          APPS_SCRIPT_URL = cachedUrl;
+          console.log('📂 캐시된 URL 사용:', cachedUrl);
+          return cachedUrl;
+        }
+        // 모든 방법 실패 시 기본 URL
+        const fallbackUrl = 'https://script.google.com/a/macros/ggproduction.net/s/AKfycby8n7D5slaHhHoNbZ7SogJtdvHrREUA1WnvRbu40741NSpsOq4HdbRSIKaBdJxf7w2l/exec';
+        APPS_SCRIPT_URL = fallbackUrl;
+        localStorage.setItem('appsScriptUrl', fallbackUrl);
+        return fallbackUrl;
+      }
+    }
 
     // v70 구조 강제 적용을 위한 localStorage 초기화
     const V70_MIGRATION_KEY = 'v70_migration_done';
@@ -5874,12 +5915,15 @@ async function sendDataToGoogleSheet(){
           }
 
           if (newUrl && newUrl !== APPS_SCRIPT_URL) {
-            if (updateAppsScriptUrl(newUrl)) {
-              // 성공 시 UI 업데이트
-              if (currentUrlSpan) {
-                currentUrlSpan.textContent = newUrl;
-                currentUrlSpan.className = 'text-xs text-green-400 break-all font-mono';
+            updateAppsScriptUrl(newUrl).then(success => {
+              if (success) {
+                // 성공 시 UI 업데이트
+                if (currentUrlSpan) {
+                  currentUrlSpan.textContent = newUrl;
+                  currentUrlSpan.className = 'text-xs text-green-400 break-all font-mono';
+                }
               }
+            });
               showUrlStatus('✅ URL이 성공적으로 저장되었습니다!', true);
               showFeedback('✅ Apps Script URL이 저장되었습니다');
 
@@ -6859,9 +6903,11 @@ async function sendDataToGoogleSheet(){
         // Apps Script URL 저장
         const newUrl = el.appsScriptUrlInput.value.trim();
         if (newUrl && newUrl !== APPS_SCRIPT_URL) {
-          if (updateAppsScriptUrl(newUrl)) {
-            console.log('✅ Apps Script URL 업데이트 완료');
-          }
+          updateAppsScriptUrl(newUrl).then(success => {
+            if (success) {
+              console.log('✅ Apps Script URL 업데이트 완료');
+            }
+          });
         }
         
         // 칩 검증 설정 저장
