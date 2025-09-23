@@ -2,10 +2,16 @@
 <!--
   ============================================
   포커 핸드 로거 (Poker Hand Logger)
-  Version: 3.5.28
+  Version: 3.5.29
   Last Modified: 2025-09-23 KST
 
   Change Log:
+  - v3.5.29 (2025-09-23): Apps Script URL 설정 기능 추가
+    • URL 설정 버튼 및 모달 UI 추가
+    • URL 설정 안내 메시지 개선
+    • 시트 전송 시 URL 검증 강화
+    • 연결 테스트 기능 추가
+    • localStorage 저장 및 불러오기
   - v3.5.28 (2025-09-23): 연쇄적인 문제 해결 및 코드 안정성 개선
     • ActionOrderManager 클래스 초기화 순서 수정 (클래스 정의 직후 초기화)
     • window.showFeedback, window.openCardSelector 전역 참조 보장
@@ -165,7 +171,7 @@
   <meta http-equiv="cache-control" content="no-cache, must-revalidate, max-age=0" />
   <meta http-equiv="pragma" content="no-cache" />
   <meta http-equiv="expires" content="0" />
-  <title>포커 핸드 로거 v3.5.28</title>
+  <title>포커 핸드 로거 v3.5.29</title>
   <script src="https://cdn-tailwindcss.vercel.app/"></script>
   <script src="archive/chip-analysis-module.js?v=3.5.25" defer></script>
   <!-- 테이블 관리 모듈 v59 - IN/OUT 두 가지 상태만 사용 -->
@@ -333,6 +339,7 @@
             <span id="time-display" class="bg-gray-900/50 p-1 rounded-md font-mono text-xs"></span>
           </div>
           <div class="flex items-center gap-1">
+            <button id="set-url-btn" class="btn bg-amber-600 hover:bg-amber-700 px-2 py-1 rounded-md text-xs">URL 설정</button>
             <button id="manage-players-btn" class="btn bg-gray-600 hover:bg-gray-700 px-2 py-1 rounded-md text-xs">관리</button>
             <button id="refresh-data" class="text-lg" title="데이터 새로고침">🔄</button>
           </div>
@@ -426,6 +433,55 @@
   <div id="action-pad-modal" class="modal fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 hidden opacity-0"></div>
   <div id="keypad-modal" class="modal fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 hidden opacity-0"></div>
   <div id="load-hand-modal" class="modal fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 hidden opacity-0"></div>
+
+  <!-- Apps Script URL 설정 모달 (v3.5.29) -->
+  <div id="url-setup-modal" class="modal fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 hidden opacity-0">
+    <div class="bg-gray-800 rounded-lg p-6 max-w-lg w-full">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-amber-400">Apps Script URL 설정</h2>
+        <button id="close-url-modal" class="text-2xl hover:text-gray-400">&times;</button>
+      </div>
+
+      <div class="space-y-4">
+        <div class="bg-gray-700 rounded-lg p-4">
+          <h3 class="text-sm font-bold text-green-400 mb-2">📋 설정 방법:</h3>
+          <ol class="text-xs text-gray-300 space-y-1 list-decimal list-inside">
+            <li>Google Apps Script 프로젝트 열기</li>
+            <li>Code.gs 파일 복사하여 붙여넣기</li>
+            <li>배포 → 새 배포 클릭</li>
+            <li>유형: "웹 앱"으로 선택</li>
+            <li>액세스 권한: "모든 사용자"로 설정</li>
+            <li>배포 버튼 클릭</li>
+            <li>생성된 URL 복사</li>
+          </ol>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">
+            Apps Script 배포 URL:
+          </label>
+          <input
+            id="apps-script-url-input"
+            type="text"
+            placeholder="https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec"
+            class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-sm text-white focus:border-amber-500 focus:outline-none"
+          />
+        </div>
+
+        <div id="url-status-message" class="text-sm"></div>
+
+        <div class="flex gap-2">
+          <button id="save-url-btn" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md">
+            저장
+          </button>
+          <button id="test-url-btn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md">
+            연결 테스트
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 관리 모달 -->
   <div id="registration-modal" class="modal fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 hidden opacity-0">
     <div class="bg-gray-800 rounded-lg p-4 max-w-lg w-full max-h-[90vh] overflow-y-auto">
@@ -784,7 +840,7 @@
   // ========================================
   // 중앙 버전 관리 시스템
   // ========================================
-  const APP_VERSION = 'v3.5.28';
+  const APP_VERSION = 'v3.5.29';
   const VERSION_DATE = '2025-09-22';
   const VERSION_INFO = `포커 핸드 로거 ${APP_VERSION} (${VERSION_DATE})`;
 
@@ -1951,6 +2007,8 @@
       timezoneSelector: document.getElementById('timezone-selector'),
       timeDisplay: document.getElementById('time-display'),
       managePlayersBtn: document.getElementById('manage-players-btn'),
+      setUrlBtn: document.getElementById('set-url-btn'),
+      urlSetupModal: document.getElementById('url-setup-modal'),
       registrationModal: document.getElementById('registration-modal'),
       // CAM 버튼 완전 제거 (v3.5.27)
       // cam1, cam2 요소 및 모든 참조 제거됨
@@ -4639,6 +4697,18 @@ async function sendDataToGoogleSheet(){
     logMessage('시트 전송 시작...');
 
   try{
+    // APPS_SCRIPT_URL이 없으면 오류 메시지 표시 (v3.5.29)
+    if (!APPS_SCRIPT_URL) {
+      logMessage('❌ Apps Script URL이 설정되지 않았습니다.');
+      logMessage('📌 설정 방법:');
+      logMessage('1. Google Apps Script에 Code.gs 배포');
+      logMessage('2. 배포 URL 복사');
+      logMessage('3. 앱 상단 "Apps Script URL 설정" 버튼 클릭');
+      logMessage('4. URL 입력 후 저장');
+      showFeedback('❌ Apps Script URL 설정 필요', true);
+      return;
+    }
+
     const { rows, epochSec } = generateRows_v46();
     const indexMeta   = buildIndexMeta();
     // 승자 정보 추가 (없으면 빈 문자열)
@@ -4651,6 +4721,7 @@ async function sendDataToGoogleSheet(){
     const form = new URLSearchParams();
     form.append('payload', JSON.stringify(payload));
 
+    logMessage(`📡 전송 URL: ${APPS_SCRIPT_URL}`);
     const res = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
@@ -4971,12 +5042,89 @@ async function sendDataToGoogleSheet(){
     window.showFeedback = showFeedback;
     window.openCardSelector = openCardSelector;
 
+    // URL 설정 모달 열기 (v3.5.29)
+    function openUrlSetupModal() {
+      const modal = el.urlSetupModal;
+      const input = document.getElementById('apps-script-url-input');
+      const statusMsg = document.getElementById('url-status-message');
+
+      // 현재 URL 표시
+      input.value = APPS_SCRIPT_URL || '';
+      statusMsg.textContent = '';
+
+      openModal(modal);
+
+      // 이벤트 리스너 설정
+      document.getElementById('close-url-modal').onclick = () => closeModal(modal);
+
+      document.getElementById('save-url-btn').onclick = async () => {
+        const url = input.value.trim();
+        if (!url) {
+          statusMsg.className = 'text-sm text-red-400';
+          statusMsg.textContent = '❌ URL을 입력해주세요.';
+          return;
+        }
+
+        if (!url.includes('script.google.com/macros/s/') || !url.endsWith('/exec')) {
+          statusMsg.className = 'text-sm text-amber-400';
+          statusMsg.textContent = '⚠️ 올바른 Apps Script URL 형식이 아닙니다.';
+          return;
+        }
+
+        // URL 저장
+        APPS_SCRIPT_URL = url;
+        window.APPS_SCRIPT_URL = url;
+        localStorage.setItem('appsScriptUrl', url);
+
+        statusMsg.className = 'text-sm text-green-400';
+        statusMsg.textContent = '✅ URL이 저장되었습니다.';
+
+        setTimeout(() => {
+          closeModal(modal);
+          showFeedback('Apps Script URL이 설정되었습니다', false);
+        }, 1000);
+      };
+
+      document.getElementById('test-url-btn').onclick = async () => {
+        const url = input.value.trim() || APPS_SCRIPT_URL;
+        if (!url) {
+          statusMsg.className = 'text-sm text-red-400';
+          statusMsg.textContent = '❌ 테스트할 URL이 없습니다.';
+          return;
+        }
+
+        statusMsg.className = 'text-sm text-blue-400';
+        statusMsg.textContent = '🔄 연결 테스트 중...';
+
+        try {
+          const response = await fetch(url + '?action=test', {
+            method: 'GET',
+            mode: 'cors'
+          });
+
+          if (response.ok) {
+            statusMsg.className = 'text-sm text-green-400';
+            statusMsg.textContent = '✅ 연결 성공! Apps Script가 정상 작동합니다.';
+          } else {
+            statusMsg.className = 'text-sm text-amber-400';
+            statusMsg.textContent = `⚠️ 연결됨 (상태: ${response.status})`;
+          }
+        } catch (error) {
+          statusMsg.className = 'text-sm text-red-400';
+          statusMsg.textContent = '❌ 연결 실패 - CORS 오류 또는 URL이 잘못되었습니다.';
+        }
+      };
+    }
+
     // ====== EVENT LISTENERS ======
     function setupEventListeners(){
       el.loadHandBtn.onclick = openLoadHandModal;
       el.refreshDataBtn.onclick = () => executeWithLock(loadInitial, '데이터 새로고침', '최신 데이터를 불러오고 있습니다...');
       el.resetBtn.onclick = () => executeWithLock(resetApp, '앱 리셋', '앱을 초기화하고 있습니다...');
-      
+
+      // URL 설정 버튼 (v3.5.29)
+      el.setUrlBtn.onclick = () => openUrlSetupModal();
+
       // CAM 버튼 이벤트 리스너 완전 제거 (v3.5.27)
       // 모든 카메라 관련 이벤트 및 요소 제거됨
       // "시트 전송" 버튼을 누르면 → 바로 전송 (노트 기능 제거)
