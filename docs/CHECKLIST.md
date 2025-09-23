@@ -6,22 +6,70 @@
 
 ---
 
-## 🔴 **현재 발생 오류 및 해결 방안 (3차 시도)**
+## 🔴 **현재 발생 오류 및 해결 방안 (4차 시도)**
 
-### **2차 해결 실패 원인 분석**
+### **3차 해결 실패 원인 분석 (console.md)**
+
+#### **새로운 오류 발견:**
+
+1. **Line 19: DEFAULT_APPS_SCRIPT_URL 미정의 오류**
 ```javascript
-// Line 1384 오류
-Uncaught (in promise) ReferenceError: Cannot access 'APPS_SCRIPT_URL' before initialization
+Uncaught ReferenceError: DEFAULT_APPS_SCRIPT_URL is not defined
+at HTMLButtonElement.<anonymous> ((index):5891:51)
+```
+- 원인: DEFAULT_APPS_SCRIPT_URL 변수를 제거했지만 Line 5891에서 여전히 참조
+- 영향: URL 설정 모달 열 때 오류 발생
+
+2. **Line 8-9: CORS 오류 지속**
+```
+Access to fetch at 'https://script.google.com/.../exec'
+from origin 'http://localhost:8000' has been blocked by CORS policy
+```
+- 원인: Apps Script가 실제로 배포되지 않았거나 권한 설정 문제
+- 영향: 서버와 통신 불가
+
+3. **Line 26: GitHub API 인증 오류**
+```
+POST https://api.github.com/gists 401 (Unauthorized)
+```
+- 원인: GitHub 토큰 없음 또는 만료
+- 영향: 클라우드 동기화 실패 (부가 기능)
+
+### **4차 해결 방안**
+
+#### **1. DEFAULT_APPS_SCRIPT_URL 참조 제거 ✅**
+```javascript
+// Line 5891 수정
+// 이전: const isCustomUrl = APPS_SCRIPT_URL !== DEFAULT_APPS_SCRIPT_URL;
+// 수정: APPS_SCRIPT_URL 존재 여부로만 판단
+currentUrlSpan.className = APPS_SCRIPT_URL ?
+  'text-xs text-green-400 break-all font-mono' :
+  'text-xs text-amber-400 break-all font-mono';
 ```
 
-**문제점:**
-- `APPS_SCRIPT_URL` 변수가 DOMContentLoaded 이벤트 핸들러 **안에서** 선언됨
-- 핸들러 내부에서 변수 사용 시 아직 초기화되지 않은 상태
-- 변수 스코프 문제로 인한 참조 오류
+**상태:**
+- [x] DEFAULT_APPS_SCRIPT_URL 참조 완전 제거
+- [x] URL 존재 여부로만 스타일 결정
 
-### **3차 해결 방안 (구현 완료)**
+#### **2. CORS 오류 해결 방안**
+```
+실제 원인:
+1. Apps Script URL이 잘못되었거나
+2. Apps Script가 배포되지 않았거나
+3. 배포 설정이 "모든 사용자" 권한이 아님
 
-#### **1. 변수 스코프 문제 해결 ✅**
+해결책:
+- 사용자가 올바른 Apps Script URL 입력하도록 안내
+- CORS 오류 발생해도 앱은 계속 작동
+- 오류 메시지를 사용자 친화적으로 변경
+```
+
+**상태:**
+- [ ] 사용자에게 URL 설정 안내 강화
+- [ ] CORS 오류 메시지 개선
+- [ ] 오프라인 모드 지원 추가
+
+#### **3. 이전 문제 해결 내역**
 ```javascript
 // 이전 (문제): DOMContentLoaded 내부에 변수 선언
 document.addEventListener('DOMContentLoaded', () => {

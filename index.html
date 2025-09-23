@@ -5887,9 +5887,8 @@ async function sendDataToGoogleSheet(){
 
         if (currentUrlSpan) {
           currentUrlSpan.textContent = APPS_SCRIPT_URL || '설정되지 않음';
-          // URL이 기본값인지 사용자 설정값인지 표시
-          const isCustomUrl = APPS_SCRIPT_URL !== DEFAULT_APPS_SCRIPT_URL;
-          currentUrlSpan.className = isCustomUrl ?
+          // URL 상태에 따라 스타일 설정
+          currentUrlSpan.className = APPS_SCRIPT_URL ?
             'text-xs text-green-400 break-all font-mono' :
             'text-xs text-amber-400 break-all font-mono';
         }
