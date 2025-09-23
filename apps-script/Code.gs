@@ -1,8 +1,13 @@
 /**
  * Virtual Data - Poker Hand Logger
  * Google Apps Script Backend
- * Version: v71.0.3 ULTIMATE
+ * Version: v71.0.4 ULTIMATE
  * Last Modified: 2025-09-23
+ *
+ * v71.0.4 업데이트 내용:
+ * - Config 시트 A1에서 Apps Script URL 읽기 기능 추가
+ * - getAppsScriptUrlFromConfig() 함수 추가
+ * - getConfigUrl 액션 지원
  *
  * v71.0.3 업데이트 내용:
  * - Type 시트 자동 스타일 적용 (Roboto 11pt, 중앙 정렬)
