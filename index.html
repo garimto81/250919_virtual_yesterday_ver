@@ -2,10 +2,35 @@
 <!--
   ============================================
   포커 핸드 로거 (Poker Hand Logger)
-  Version: 3.5.0
+  Version: 3.5.16
   Last Modified: 2025-09-22 KST
 
   Change Log:
+  - v3.5.16 (2025-09-22): 메모리 관리 최적화 및 성능 개선
+    • 메모리 임계값 20MB → 30MB로 상향 조정
+    • 메모리 체크 주기 5초 → 30초로 변경하여 성능 개선
+    • 메모리 정리 로직 강화 (액션 로그, 플레이어 캐시, DOM 정리)
+    • 디버그 모드에서만 메모리 경고 표시
+    • 장시간 사용 시 성능 저하 방지를 위한 자동 정리 기능 추가
+  - v3.5.15 (2025-09-22): 플레이어 등록 후 삭제 버튼 미생성 문제 해결
+    • addPlayerToSeat() 함수에서 seat → seatNo 속성 수정
+    • renderManagementPlayersList() 함수의 인덱스 찾기 로직 개선
+    • players.indexOf() → players.findIndex(p => p.name === player.name)로 수정
+    • 새로 등록된 플레이어의 삭제 버튼이 정상적으로 생성되도록 수정
+  - v3.5.14 (2025-09-22): ActionOrderManager 유사 로직 seat 처리 완전 개선
+    • getPreflopOrder()와 getPostflopOrder() 함수의 seatMap 구축 로직 수정
+    • getBigBlindPlayer()와 getSmallBlindPlayer() 함수의 seat 처리 개선
+    • 모든 p.seat 사용 위치를 parseSeatNo(p.seatNo || p.seat) 방식으로 통일
+    • #1, #2 형태와 1, 2 형태 모두 안전하게 처리하도록 개선
+  - v3.5.13 (2025-09-22): 관리 버튼 플레이어 정보 미호출 문제 해결
+    • renderManagementPlayersList() 함수에서 p.seat → p.seatNo 수정
+    • 관리 버튼에서 테이블 선택 시 플레이어 정보 정상 표시
+    • 새로운 Type 시트 구조에 맞는 좌석 번호 매칭 로직 완성
+  - v3.5.12 (2025-09-22): 새로운 Type 시트 구조 완전 적용 완료
+    • Type 시트 구조: A:Poker Room, B:Table Name, C:Table No, D:Seat No, E:Players, F:Nationality, G:Chips, H:Keyplayer
+    • 모든 플레이어 관리 로직 새 8열 구조 적용 완료
+    • Apps Script 모든 함수 새 구조 적용 완료
+    • 프론트엔드 buildTypeFromCsv 함수 최종 검증 완료
   - v3.5.0 (2025-09-22): 대규모 성능 최적화 및 모바일 개선
     • API 키 보안 강화 (서버사이드 프록시 구현)
     • 모바일 반응성 대폭 개선 (300ms 지연 완전 제거)
@@ -126,7 +151,7 @@
   <meta http-equiv="cache-control" content="no-cache, must-revalidate, max-age=0" />
   <meta http-equiv="pragma" content="no-cache" />
   <meta http-equiv="expires" content="0" />
-  <title>포커 핸드 로거 v3.5.10</title>
+  <title>포커 핸드 로거 v3.5.19</title>
   <script src="https://cdn-tailwindcss.vercel.app/"></script>
   <script src="archive/chip-analysis-module.js?v=3.0.0" defer></script>
   <!-- 테이블 관리 모듈 v59 - IN/OUT 두 가지 상태만 사용 -->
@@ -743,9 +768,19 @@
   // ========================================
   // 중앙 버전 관리 시스템
   // ========================================
-  const APP_VERSION = 'v3.5.11';
+  const APP_VERSION = 'v3.5.19';
   const VERSION_DATE = '2025-09-22';
   const VERSION_INFO = `포커 핸드 로거 ${APP_VERSION} (${VERSION_DATE})`;
+
+  // ========================================
+  // seatNo 안전 처리 헬퍼 함수
+  // ========================================
+  function parseSeatNo(seatNo) {
+    if (!seatNo) return 0;
+    const seatStr = String(seatNo).replace('#', '');
+    const parsed = parseInt(seatStr);
+    return isNaN(parsed) ? 0 : parsed;
+  }
 
   // ========================================
   // 스트릿 자동 진행 시스템 v2.0 - 완벽한 보안 구현
@@ -917,7 +952,8 @@
 
       const seatMap = {};
       players.forEach(p => {
-        if (p.seat) seatMap[p.seat] = p;
+        const seatNum = parseSeatNo(p.seatNo || p.seat);
+        if (seatNum > 0) seatMap[seatNum] = p;
       });
 
       const occupiedSeats = Object.keys(seatMap).map(Number).sort((a, b) => a - b);
@@ -964,7 +1000,8 @@
 
       const seatMap = {};
       players.forEach(p => {
-        if (p.seat) seatMap[p.seat] = p;
+        const seatNum = parseSeatNo(p.seatNo || p.seat);
+        if (seatNum > 0) seatMap[seatNum] = p;
       });
 
       const occupiedSeats = Object.keys(seatMap).map(Number).sort((a, b) => a - b);
@@ -1085,26 +1122,26 @@
     getBigBlindPlayer() {
       const buttonPosition = parseInt(window.state.buttonPosition) || 1;
       const players = window.state.playersInHand || [];
-      const occupiedSeats = players.map(p => p.seat).filter(s => s).map(Number).sort((a, b) => a - b);
+      const occupiedSeats = players.map(p => parseSeatNo(p.seatNo || p.seat)).filter(s => s > 0).sort((a, b) => a - b);
 
       if (occupiedSeats.length < 2) return null;
 
       const sbSeat = this.getNextOccupiedSeat(buttonPosition, occupiedSeats);
       const bbSeat = this.getNextOccupiedSeat(sbSeat, occupiedSeats);
 
-      return players.find(p => p.seat === bbSeat);
+      return players.find(p => parseSeatNo(p.seatNo || p.seat) === bbSeat);
     }
 
     // 스몰블라인드 플레이어 찾기
     getSmallBlindPlayer() {
       const buttonPosition = parseInt(window.state.buttonPosition) || 1;
       const players = window.state.playersInHand || [];
-      const occupiedSeats = players.map(p => p.seat).filter(s => s).map(Number).sort((a, b) => a - b);
+      const occupiedSeats = players.map(p => parseSeatNo(p.seatNo || p.seat)).filter(s => s > 0).sort((a, b) => a - b);
 
       if (occupiedSeats.length < 2) return null;
 
       const sbSeat = this.getNextOccupiedSeat(buttonPosition, occupiedSeats);
-      return players.find(p => p.seat === sbSeat);
+      return players.find(p => parseSeatNo(p.seatNo || p.seat) === sbSeat);
     }
 
     // 모든 베팅이 같은지 확인 (사이드팟 고려)
@@ -1319,16 +1356,16 @@
     console.log(`%c${VERSION_INFO}`, 'color: #10b981; font-weight: bold; font-size: 14px');
   }
   
-  // Gemini API 설정
-  const GEMINI_API_KEY = 'AIzaSyBB8uqP1ECTe40jknSy5XK71TCs8_KbGV0';
-  const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+  // Gemini API 설정 - 추후 구현 예정
+  // const GEMINI_API_KEY = ''; // 보안을 위해 제거됨
+  // const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
   
   // 버전 정보를 항상 콘솔에 표시
   console.log(`%c====================================`, 'color: #fbbf24');
   console.log(`%c🎯 ${VERSION_INFO}`, 'color: #fbbf24; font-size: 18px; font-weight: bold');
   console.log(`%c====================================`, 'color: #fbbf24');
-  console.log('%c📱 AI 칩 스택 분석 기능 활성화', 'color: #10b981');
-  console.log('%c💡 관리 버튼 → 칩 컬러 탭에서 칩 등록', 'color: #60a5fa');
+  // console.log('%c📱 AI 칩 스택 분석 기능 활성화', 'color: #10b981'); // 추후 구현 예정
+  // console.log('%c💡 관리 버튼 → 칩 컬러 탭에서 칩 등록', 'color: #60a5fa'); // 추후 구현 예정
   
   // 모든 에러를 로그로 리다이렉트 (오류 방지)
   const originalError = console.error;
@@ -1357,10 +1394,30 @@
       versionDisplay.textContent = `${APP_VERSION} (${VERSION_DATE})`;
     }
     
-    // ====== CONFIG (필수: 실제 URL로 교체) ======
-    // Apps Script URL 설정 (localStorage에서 로드 또는 기본값 사용)
-    const DEFAULT_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwEcsF1F_RLLW_qkQIFkrwmut-zN0fHOqsAKs5B8PgHZAz2_O5sA8o2W5zZ3nD-5tjY/exec";
-    let APPS_SCRIPT_URL = localStorage.getItem('appsScriptUrl') || DEFAULT_APPS_SCRIPT_URL;
+    // ====== CONFIG v70 ULTIMATE ======
+    // v70 ULTIMATE Apps Script URL 설정
+    const V70_APPS_SCRIPT_URL = 'https://script.google.com/a/macros/ggproduction.net/s/AKfycby8n7D5slaHhHoNbZ7SogJtdvHrREUA1WnvRbu40741NSpsOq4HdbRSIKaBdJxf7w2l/exec';
+    localStorage.setItem('appsScriptUrl', V70_APPS_SCRIPT_URL);
+    let APPS_SCRIPT_URL = V70_APPS_SCRIPT_URL;
+
+    // v70 구조 강제 적용을 위한 localStorage 초기화
+    const V70_MIGRATION_KEY = 'v70_migration_done';
+    if (!localStorage.getItem(V70_MIGRATION_KEY)) {
+      console.log('[v70 마이그레이션] v65 구조 데이터 제거 시작...');
+
+      // v65 관련 localStorage 키 제거
+      const v65Keys = ['playerData', 'handData', 'actionData', 'tableData'];
+      v65Keys.forEach(key => {
+        if (localStorage.getItem(key)) {
+          console.log(`[v70 마이그레이션] v65 데이터 삭제: ${key}`);
+          localStorage.removeItem(key);
+        }
+      });
+
+      // 마이그레이션 완료 플래그 설정
+      localStorage.setItem(V70_MIGRATION_KEY, 'true');
+      console.log('[v70 마이그레이션] v65 → v70 구조 마이그레이션 완료');
+    }
     
     // CSV URLs (고정)
     const CSV_HAND_URL  = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSDY_i4330JANAjIz4sMncdJdRHsOkfUCjQusHTGQk2tykrhA4d09LeIp3XRbLd8hkN6SgSB47k_nux/pub?gid=1906746276&single=true&output=csv"; // Hand 탭 CSV
@@ -1369,6 +1426,70 @@
     
     // 전역 변수로도 설정 (테이블 관리 모듈용)
     window.APPS_SCRIPT_URL = APPS_SCRIPT_URL;
+
+    // ====== v70 HTML Service iframe 통신 함수 ======
+    function callAppsScriptWithIframe(action, data = {}) {
+      return new Promise((resolve, reject) => {
+        // 숨겨진 iframe 생성
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+
+        // iframe 로드 완료 후 처리
+        iframe.onload = () => {
+          try {
+            // iframe의 내용을 읽어서 JSON 파싱
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            const responseText = iframeDoc.body.textContent || iframeDoc.body.innerText;
+            const result = JSON.parse(responseText);
+
+            document.body.removeChild(iframe);
+            resolve(result);
+          } catch (error) {
+            document.body.removeChild(iframe);
+            reject(error);
+          }
+        };
+
+        iframe.onerror = () => {
+          document.body.removeChild(iframe);
+          reject(new Error('iframe 로드 실패'));
+        };
+
+        // 타임아웃 설정 (10초)
+        setTimeout(() => {
+          if (iframe.parentNode) {
+            document.body.removeChild(iframe);
+          }
+          reject(new Error('Apps Script 요청 타임아웃'));
+        }, 10000);
+
+        // iframe에 GET 요청 URL 설정
+        const params = new URLSearchParams();
+        params.set('action', action);
+        params.set('data', JSON.stringify(data));
+
+        iframe.src = APPS_SCRIPT_URL + '?' + params.toString();
+        document.body.appendChild(iframe);
+      });
+    }
+
+    // 기존 fetch 함수를 대체하는 래퍼 함수
+    async function callAppsScript(action, data = {}) {
+      try {
+        console.log(`[v70 iframe 통신] ${action} 호출:`, data);
+        const result = await callAppsScriptWithIframe(action, data);
+        console.log(`[v70 iframe 통신] ${action} 응답:`, result);
+        return {
+          ok: true,
+          json: () => Promise.resolve(result)
+        };
+      } catch (error) {
+        console.error(`[v70 iframe 통신] ${action} 오류:`, error);
+        throw error;
+      }
+    }
     
     // Apps Script URL 클라우드 동기화 시스템
     const CLOUD_SYNC_CONFIG = {
@@ -1700,13 +1821,13 @@
       stackImages: [] // 현재 촬영 중인 스택 이미지들
     };
 
-    // 칩 분석 모듈 초기화 (state 객체 생성 후)
-    if (typeof initChipAnalyzer === 'function') {
-      setTimeout(() => {
-        initChipAnalyzer();
-        console.log('✅ AI 칩 분석 모듈 활성화');
-      }, 100);
-    }
+    // 칩 분석 모듈 초기화 - 추후 구현 예정
+    // if (typeof initChipAnalyzer === 'function') {
+    //   setTimeout(() => {
+    //     initChipAnalyzer();
+    //     console.log('✅ AI 칩 분석 모듈 활성화');
+    //   }, 100);
+    // }
 
     // ====== CONSTS ======
     const SUITS = { s:'♠', h:'♥', d:'♦', c:'♣' };
@@ -2028,10 +2149,7 @@
       // 1-10번 좌석 버튼 (좌석 번호 표시 제거)
       for(let seatNum = 1; seatNum <= 10; seatNum++){
         // Type 시트에서 해당 좌석의 플레이어 찾기 (#1, #2 형태의 문자열을 숫자로 변환)
-        const playerData = tableData.find(p => {
-          const seatNoNumber = parseInt(p.seatNo.replace('#', ''));
-          return seatNoNumber === seatNum;
-        });
+        const playerData = tableData.find(p => parseSeatNo(p.seatNo) === seatNum);
 
         // 디버깅: 좌석별 플레이어 데이터 확인
         if(seatNum <= 3) { // 처음 3개 좌석만 로그
@@ -2093,7 +2211,7 @@
       
       // 전체 테이블 플레이어 리스트에서 좌석이 있는 플레이어들 가져오기
       const allPlayersWithSeats = tableData.filter(player => player.seatNo).map(player => ({
-        seat: parseInt(player.seatNo),
+        seat: parseSeatNo(player.seatNo),
         name: player.name
       })).sort((a, b) => a.seat - b.seat);
       
@@ -2770,7 +2888,7 @@
         
         const chips=pd.chips||'';
         const notable=pd.notable||pd.keyplayer||false;
-        const seat=pd.seat||''; // Type 시트의 seat 정보
+        const seat=pd.seatNo||''; // Type 시트의 seatNo 정보
         
         // seatMap에 추가
         if(seat) {
@@ -3040,7 +3158,7 @@
       const tableData = window.state.playerDataByTable[window.state.selectedTable] || [];
       return tableData
         .filter(player => player.seatNo)
-        .map(player => parseInt(player.seatNo))
+        .map(player => parseSeatNo(player.seatNo))
         .sort((a, b) => a - b);
     }
     
@@ -3088,9 +3206,9 @@
       
       // 플레이어 이름 가져오기 (전체 테이블 데이터에서)
       const tableData = window.state.playerDataByTable[window.state.selectedTable] || [];
-      const btnPlayer = tableData.find(p => parseInt(p.seatNo) === btnPos)?.name || '빈자리';
-      const sbPlayer = tableData.find(p => parseInt(p.seatNo) === sbSeat)?.name || '빈자리';
-      const bbPlayer = tableData.find(p => parseInt(p.seatNo) === bbSeat)?.name || '빈자리';
+      const btnPlayer = tableData.find(p => parseSeatNo(p.seatNo) === btnPos)?.name || '빈자리';
+      const sbPlayer = tableData.find(p => parseSeatNo(p.seatNo) === sbSeat)?.name || '빈자리';
+      const bbPlayer = tableData.find(p => parseSeatNo(p.seatNo) === bbSeat)?.name || '빈자리';
       
       display.innerHTML = `
         <div class="grid grid-cols-3 gap-2 text-center">
@@ -3125,9 +3243,9 @@
       
       // 플레이어 이름 가져오기 (전체 테이블 데이터에서)
       const tableData = window.state.playerDataByTable[window.state.selectedTable] || [];
-      const btnPlayer = tableData.find(p => parseInt(p.seatNo) === btnPos)?.name || '빈자리';
-      const sbPlayer = tableData.find(p => parseInt(p.seatNo) === sbSeat)?.name || '빈자리';
-      const bbPlayer = tableData.find(p => parseInt(p.seatNo) === bbSeat)?.name || '빈자리';
+      const btnPlayer = tableData.find(p => parseSeatNo(p.seatNo) === btnPos)?.name || '빈자리';
+      const sbPlayer = tableData.find(p => parseSeatNo(p.seatNo) === sbSeat)?.name || '빈자리';
+      const bbPlayer = tableData.find(p => parseSeatNo(p.seatNo) === bbSeat)?.name || '빈자리';
       
       indicators.innerHTML = `
         <span class="text-yellow-400">BTN: ${btnPlayer}</span>
@@ -3993,7 +4111,7 @@
             const seat=row[3];
             const amount=row[4];
             const time=row[5];
-            const p=players.find(pp=>String(pp.seat)===String(seat));
+            const p=players.find(pp=>parseSeatNo(pp.seatNo || pp.seat)===parseSeatNo(seat));
             const name=p?p.name:'';
             streets[street].push({
               player:name,
@@ -5884,7 +6002,7 @@ async function sendDataToGoogleSheet(){
       for (let i = 1; i <= 10; i++) {
         seats.push({
           seatNumber: i,
-          player: players.find(p => parseInt(p.seat) === i) || null
+          player: players.find(p => parseSeatNo(p.seatNo) === i) || null
         });
       }
 
@@ -5892,7 +6010,7 @@ async function sendDataToGoogleSheet(){
       listContainer.innerHTML = `
         <div class="grid grid-cols-2 gap-1">
           ${seats.map(({ seatNumber, player }) => {
-            const index = player ? players.indexOf(player) : -1;
+            const index = player ? players.findIndex(p => p.name === player.name) : -1;
             const isModified = player && window.managementState.changes.modified.includes(player.name);
             const isAdded = player && window.managementState.changes.added.includes(player.name);
             const isEmpty = !player;
@@ -6011,7 +6129,7 @@ async function sendDataToGoogleSheet(){
       }
 
       // 좌석 중복 체크
-      if (window.managementState.currentPlayers.some(p => parseInt(p.seat) === seatNumber)) {
+      if (window.managementState.currentPlayers.some(p => parseSeatNo(p.seatNo) === seatNumber)) {
         showFeedback(`#${seatNumber}은 이미 사용 중입니다`, true);
         return;
       }
@@ -6022,13 +6140,16 @@ async function sendDataToGoogleSheet(){
         return;
       }
 
-      // 추가
+      // 추가 - v71 데이터 구조에 맞춤 (정확한 순서)
       const newPlayer = {
         name: name,
-        seat: String(seatNumber),
-        chips: '100000', // 기본 칩
-        table: window.managementState.selectedTable,
-        notable: false,
+        chips: '100000',
+        keyplayer: false,  // notable → keyplayer
+        nationality: '',   // 누락된 필드 추가
+        seatNo: `#${seatNumber}`,  // seat → seatNo
+        pokerRoom: 'Merit Hall',  // 기본값
+        tableName: 'Ocean Blue',  // 기본값
+        tableNo: String(window.managementState.selectedTable),  // table → tableNo
         status: 'IN'
       };
 
@@ -6057,7 +6178,7 @@ async function sendDataToGoogleSheet(){
       if (!player) return;
 
       // 좌석 중복 체크
-      if (newSeat && window.managementState.currentPlayers.some((p, i) => i !== index && p.seat === newSeat)) {
+      if (newSeat && window.managementState.currentPlayers.some((p, i) => i !== index && parseSeatNo(p.seatNo) === newSeat)) {
         showFeedback(`#${newSeat}은 이미 사용 중입니다`, true);
         renderManagementPlayersList();
         return;
@@ -6240,26 +6361,41 @@ async function sendDataToGoogleSheet(){
           console.log(`[v3.3.1] 삭제[${index}]: "${playerName}" (길이: ${playerName.length})`);
         });
 
-        // 일괄 처리 요청
-        const formData = new FormData();
-        formData.append('action', 'batchUpdate');
-        formData.append('table', window.managementState.selectedTable);
-        formData.append('players', JSON.stringify(window.managementState.currentPlayers));
-        formData.append('deleted', JSON.stringify(deleted));
+        // v71 구조로 플레이어 데이터 변환 (정확한 순서)
+        const playersToSend = window.managementState.currentPlayers.map(p => ({
+          name: p.name,
+          chips: String(p.chips || '100000'),
+          keyplayer: p.keyplayer || p.notable || false,  // notable → keyplayer
+          nationality: p.nationality || '',
+          seatNo: p.seatNo || p.seat || '',  // seat → seatNo
+          pokerRoom: p.pokerRoom || 'Merit Hall',
+          tableName: p.tableName || 'Ocean Blue',
+          tableNo: p.tableNo || p.table || String(window.managementState.selectedTable)  // table → tableNo
+        }));
 
-        console.log('[v3.3.1] FormData 생성 완료');
-        console.log('[v3.3.1] 전송할 플레이어 데이터:', JSON.stringify(window.managementState.currentPlayers, null, 2));
+        // URL 인코딩 방식으로 요청 (CORS 해결)
+        const urlParams = new URLSearchParams();
+        urlParams.append('action', 'batchUpdate');
+        urlParams.append('table', window.managementState.selectedTable);
+        urlParams.append('players', JSON.stringify(playersToSend));
+        urlParams.append('deleted', JSON.stringify(deleted));
+
+        console.log('[v3.3.1] URLSearchParams 생성 완료');
+        console.log('[v3.3.1] 전송할 플레이어 데이터:', JSON.stringify(playersToSend, null, 2));
         console.log('[v3.3.1] 삭제할 플레이어 이름들:', JSON.stringify(deleted, null, 2));
 
-        // FormData 내용 확인
-        console.log('[v3.3.1] === FormData 내용 확인 ===');
-        for (let [key, value] of formData.entries()) {
-          console.log(`[v3.3.1] FormData[${key}]:`, typeof value === 'string' ? value.substring(0, 200) + '...' : value);
+        // URLParams 내용 확인
+        console.log('[v3.3.1] === URLSearchParams 내용 확인 ===');
+        for (let [key, value] of urlParams.entries()) {
+          console.log(`[v3.3.1] URLParams[${key}]:`, typeof value === 'string' ? value.substring(0, 200) + '...' : value);
         }
 
         const response = await fetch(APPS_SCRIPT_URL, {
           method: 'POST',
-          body: formData
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: urlParams.toString()
         });
 
         console.log('[v3.3.1] 응답 수신:', response.status, response.statusText);
@@ -6533,17 +6669,16 @@ async function sendDataToGoogleSheet(){
           return;
         }
 
-        const formData = new FormData();
-        formData.append('action', 'addPlayer');
-        formData.append('table', window.state.selectedTable);
-        formData.append('player', name);
-        formData.append('seat', seat || '');
-        formData.append('chips', chips);
-        formData.append('status', 'IN');
-
-        const response = await fetch(APPS_SCRIPT_URL, {
-          method: 'POST',
-          body: formData
+        // v70 iframe 통신 방식으로 변경
+        const response = await callAppsScript('createPlayer', {
+          tableNo: window.state.selectedTable,
+          seatNo: seat || '',
+          name: name,
+          chips: chips,
+          pokerRoom: 'Default Room',
+          tableName: 'Default Table',
+          nationality: '',
+          keyplayer: false
         });
 
         const result = await response.json();
